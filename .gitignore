@@ -1,1 +1,52 @@
 node_modules
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+venv/
+env/
+ENV/
+.venv/
+bin/
+lib/
+lib64/
+parts/
+sdist/
+var/
+
+# Django stuff
+*.log
+local_settings.py
+db.sqlite3
+/media
+/static
+
+# Project metadata
+*.manifest
+*.spec
+Pipfile.lock
+poetry.lock
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE-specific files (optional, can be added to a global gitignore instead)
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
