@@ -3,6 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
+from django.middleware.csrf import get_token
+from django.http import JsonResponse
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -19,7 +21,7 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
-        login(request, user) # This creates the session cookie!
+        login(request, user)
         return Response(UserSerializer(user).data)
 
 class LogoutView(APIView):
@@ -27,7 +29,17 @@ class LogoutView(APIView):
         logout(request)
         return Response(status=status.HTTP_200_OK)
 
-class UserView(APIView):
-    # Used to check if user is still logged in when they refresh the page
+# --- CHANGED SECTION STARTS HERE ---
+class RetrieveUserView(APIView):  # 1. Renamed to match urls.py
+    permission_classes = [permissions.IsAuthenticated] # 2. ADDED THE GUARD
+
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+# --- CHANGED SECTION ENDS HERE ---
+
+class GetCSRFToken(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        csrf_token = get_token(request)
+        return JsonResponse({'csrfToken': csrf_token})

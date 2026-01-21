@@ -12,6 +12,8 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 1. Get login from your new real AuthContext
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -19,24 +21,26 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      const success = await login(email, password);
-      if (success) {
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
-        });
-        navigate("/dashboard");
-      }
-    } catch (error) {
+    // 2. We don't use try/catch here because AuthContext handles the try/catch internally
+    // and returns 'true' for success or 'false' for failure.
+    const success = await login(email, password);
+
+    if (success) {
       toast({
-        title: "Error",
-        description: "Invalid credentials. Please try again.",
+        title: "Welcome back!",
+        description: "You've successfully logged in.",
+      });
+      navigate("/dashboard");
+    } else {
+      // 3. If success is false, we explicitly show the error here
+      toast({
+        title: "Login Failed",
+        description: "Invalid email or password. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   return (

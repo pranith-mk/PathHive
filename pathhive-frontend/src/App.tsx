@@ -45,7 +45,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
@@ -59,7 +59,7 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
             <AIAssistantWrapper />
-          </BrowserRouter>
+          
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

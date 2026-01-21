@@ -14,6 +14,8 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Get the register action from context
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -27,24 +29,38 @@ export default function Register() {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      const success = await register(email, password, fullName, username);
-      if (success) {
-        toast({
-          title: "Welcome to PathHive!",
-          description: "Your account has been created successfully.",
-        });
-        navigate("/dashboard");
-      }
-    } catch (error) {
+    // Optional: Client-side validation before sending to server
+    const isPasswordValid = passwordRequirements.every(req => req.met);
+    if (!isPasswordValid) {
+       toast({
+         title: "Weak Password",
+         description: "Please ensure your password meets all requirements.",
+         variant: "destructive",
+       });
+       setIsLoading(false);
+       return;
+    }
+
+    // Call the API via AuthContext
+    // Note: The order of arguments must match your AuthContext definition
+    const success = await register(email, password, fullName, username);
+
+    if (success) {
       toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
+        title: "Welcome to PathHive!",
+        description: "Your account has been created successfully.",
+      });
+      navigate("/dashboard");
+    } else {
+      // Explicitly handle the failure case here
+      toast({
+        title: "Registration Failed",
+        description: "Username or Email might already be taken. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   return (
@@ -180,8 +196,7 @@ export default function Register() {
               )}
             </div>
 
-
-            <Button type="submit" variant="hero" className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" variant="default" className="w-full" size="lg" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Create Account"}
             </Button>
           </form>
