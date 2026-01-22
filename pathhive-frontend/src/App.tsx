@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom"; // Removed unused BrowserRouter
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AIAssistant, AIAssistantTrigger } from "@/components/ai/AIAssistant";
 import { useState } from "react";
@@ -50,10 +50,17 @@ const App = () => {
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              
               <Route path="/browse" element={<Browse />} />
               <Route path="/path/:id" element={<PathDetails />} />
+              
+              {/* Note: In previous steps we linked to /dashboard, 
+                  you might want to point this to Browse temporarily if Dashboard isn't ready */}
               <Route path="/dashboard" element={<Dashboard />} />
+              
+              
               <Route path="/create" element={<CreatePath />} />
+              
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/creator/:creatorId" element={<CreatorDashboard />} />
               <Route path="*" element={<NotFound />} />

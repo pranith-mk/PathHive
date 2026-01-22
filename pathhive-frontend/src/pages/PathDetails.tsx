@@ -1,13 +1,14 @@
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { mockLearningPaths, mockComments } from "@/data/mockData";
+// import { mockComments } from "@/data/mockData"; // Commented out for now
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { CommentsSection } from "@/components/comments/CommentsSection";
+// import { CommentsSection } from "@/components/comments/CommentsSection"; // Keep if you want
 import { ReportDialog } from "@/components/reports/ReportDialog";
 import { RatingDialog } from "@/components/ratings/RatingDialog";
 import {
@@ -26,41 +27,82 @@ import {
   Code,
   Folder,
   Flag,
+  Loader2,
 } from "lucide-react";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-const resourceTypeIcons = {
+// 1. Import Service and Types
+import { pathService } from "@/lib/pathService";
+import { Path } from "@/types/api";
+
+const resourceTypeIcons: Record<string, any> = {
   video: Video,
   article: FileText,
   documentation: FileText,
   exercise: Code,
   project: Folder,
+  file: FileText // Added fallback for generic files
 };
 
 export default function PathDetails() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  
+  // 2. Real Data State
+  const [path, setPath] = useState<Path | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isEnrolled, setIsEnrolled] = useState(false);
 
-  const path = mockLearningPaths.find((p) => p.id === id);
-  const comments = mockComments.filter((c) => c.pathId === id);
+  // 3. Fetch Data from API
+  useEffect(() => {
+    const fetchPath = async () => {
+      if (!id) return;
+      try {
+        const data = await pathService.getPathById(id);
+        setPath(data);
+      } catch (err) {
+        console.error("Error fetching path:", err);
+        setError("Failed to load path.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  if (!path) {
+    fetchPath();
+  }, [id]);
+
+  // 4. Loading State
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex h-[50vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // 5. Error/Not Found State
+  if (error || !path) {
     return (
       <MainLayout>
         <div className="container py-16 text-center">
           <h1 className="text-2xl font-bold mb-4">Path not found</h1>
+          <p className="text-muted-foreground mb-6">The path you are looking for does not exist.</p>
           <Button onClick={() => navigate("/browse")}>Browse Paths</Button>
         </div>
       </MainLayout>
     );
   }
 
-  const progress = path.steps.length > 0 
-    ? (completedSteps.length / path.steps.length) * 100 
+  // 6. Safe Logic for Steps (API might return undefined if no steps exist)
+  const steps = path.steps || [];
+  const progress = steps.length > 0 
+    ? (completedSteps.length / steps.length) * 100 
     : 0;
 
   const toggleStepCompletion = (stepId: string) => {
@@ -76,33 +118,34 @@ export default function PathDetails() {
       navigate("/login");
       return;
     }
+    // TODO: Connect to backend enrollment API later
     setIsEnrolled(true);
   };
 
   return (
     <MainLayout>
       {/* Hero Section */}
-      <section className="bg-gradient-dark text-primary-foreground">
-        <div className="container py-8 md:py-12">
+      <section className="bg-gradient-to-r from-slate-900 to-slate-800 text-white pb-12 pt-8">
+        <div className="container">
           <Button
             variant="ghost"
             size="sm"
-            className="mb-6 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
-            onClick={() => navigate(-1)}
+            className="mb-6 text-white/70 hover:text-white hover:bg-white/10"
+            onClick={() => navigate("/browse")}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            Back to Paths
           </Button>
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Path Info */}
             <div className="lg:col-span-2">
               <div className="flex flex-wrap gap-2 mb-4">
-                <Badge className="bg-primary/20 text-primary-foreground capitalize">
+                <Badge className="bg-primary text-primary-foreground hover:bg-primary/90 capitalize">
                   {path.difficulty}
                 </Badge>
-                {path.tags.slice(0, 3).map((tag) => (
-                  <Badge key={tag.id} variant="outline" className="border-primary-foreground/30 text-primary-foreground">
+                {path.tags.map((tag) => (
+                  <Badge key={tag.id} variant="outline" className="border-white/30 text-white">
                     {tag.name}
                   </Badge>
                 ))}
@@ -111,69 +154,50 @@ export default function PathDetails() {
               <h1 className="text-3xl md:text-4xl font-display font-bold mb-4">
                 {path.title}
               </h1>
-              <p className="text-primary-foreground/80 mb-6 text-lg">
+              <p className="text-white/80 mb-6 text-lg leading-relaxed">
                 {path.description}
               </p>
 
-              <div className="flex flex-wrap gap-6 text-sm text-primary-foreground/70">
+              <div className="flex flex-wrap gap-6 text-sm text-white/70">
+                {/* Note: We don't have rating/enrollment in API yet, so we mock or hide them */}
                 <span className="flex items-center gap-2">
-                  <Star className="h-4 w-4 fill-primary text-primary" />
-                  {path.averageRating.toFixed(1)} rating
-                </span>
-                <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  {path.enrollmentCount.toLocaleString()} learners
+                  <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                  New
                 </span>
                 <span className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4" />
-                  {path.steps.length} steps
+                  {steps.length} steps
+                </span>
+                 <span className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Free
                 </span>
               </div>
 
               {/* Creator */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-primary-foreground/10">
-                <Link 
-                  to={`/creator/${path.creator?.id}`}
-                  className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-                >
-                  <Avatar className="h-12 w-12 border-2 border-primary-foreground/20">
-                    <AvatarImage src={path.creator?.avatar} />
-                    <AvatarFallback>{path.creator?.fullName?.charAt(0)}</AvatarFallback>
+              <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/10">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12 border-2 border-white/20">
+                     {/* Safe check for creator avatar */}
+                    <AvatarImage src={undefined} /> 
+                    <AvatarFallback className="text-black">{path.creator?.username?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium hover:underline">{path.creator?.fullName}</p>
-                    <p className="text-sm text-primary-foreground/60">Path Creator</p>
+                    <p className="font-medium">{path.creator?.username}</p>
+                    <p className="text-sm text-white/60">Path Creator</p>
                   </div>
-                </Link>
-                {path.creator && (
-                  <ReportDialog
-                    reportType="user"
-                    targetId={path.creator.id}
-                    targetName={path.creator.fullName}
-                    isAuthenticated={isAuthenticated}
-                    onAuthRequired={() => navigate("/login")}
-                    trigger={
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-primary-foreground/60 hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Flag className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
-                )}
+                </div>
               </div>
             </div>
 
             {/* Enrollment Card */}
             <div className="lg:col-span-1">
-              <div className="bg-card text-card-foreground rounded-xl p-6 shadow-elevated">
+              <div className="bg-white text-slate-900 rounded-xl p-6 shadow-xl border border-slate-200">
                 {isEnrolled ? (
                   <>
                     <div className="mb-4">
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">Your Progress</span>
+                        <span className="text-slate-500">Your Progress</span>
                         <span className="font-medium">{Math.round(progress)}%</span>
                       </div>
                       <Progress value={progress} className="h-2" />
@@ -184,7 +208,7 @@ export default function PathDetails() {
                     </Button>
                   </>
                 ) : (
-                  <Button variant="hero" className="w-full mb-3" size="lg" onClick={handleEnroll}>
+                  <Button className="w-full mb-3 bg-orange-500 hover:bg-orange-600 text-white" size="lg" onClick={handleEnroll}>
                     <Play className="h-4 w-4 mr-2" />
                     Start Learning
                   </Button>
@@ -197,29 +221,6 @@ export default function PathDetails() {
                   <Button variant="outline" className="flex-1">
                     <Share2 className="h-4 w-4" />
                   </Button>
-                  <RatingDialog
-                    pathId={path.id}
-                    pathTitle={path.title}
-                    isAuthenticated={isAuthenticated}
-                    onAuthRequired={() => navigate("/login")}
-                    trigger={
-                      <Button variant="outline" className="flex-1">
-                        <Star className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
-                  <ReportDialog
-                    reportType="path"
-                    targetId={path.id}
-                    targetName={path.title}
-                    isAuthenticated={isAuthenticated}
-                    onAuthRequired={() => navigate("/login")}
-                    trigger={
-                      <Button variant="outline" className="flex-1">
-                        <Flag className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
                 </div>
               </div>
             </div>
@@ -228,25 +229,23 @@ export default function PathDetails() {
       </section>
 
       {/* Content Section */}
-      <section className="container py-8">
+      <section className="container py-8 max-w-6xl">
         <Tabs defaultValue="curriculum" className="space-y-6">
           <TabsList>
             <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
-            <TabsTrigger value="comments">
-              Comments ({comments.length})
-            </TabsTrigger>
+            <TabsTrigger value="comments" disabled>Comments (Coming Soon)</TabsTrigger>
           </TabsList>
 
           <TabsContent value="curriculum" className="space-y-4">
-            {path.steps.length > 0 ? (
-              path.steps.map((step, index) => {
+            {steps.length > 0 ? (
+              steps.map((step) => {
                 const isCompleted = completedSteps.includes(step.id);
                 return (
                   <div
                     key={step.id}
                     className={cn(
                       "bg-card rounded-xl border p-5 transition-all",
-                      isCompleted ? "border-success/30 bg-success/5" : "border-border"
+                      isCompleted ? "border-green-500/30 bg-green-50/50" : "border-border"
                     )}
                   >
                     <div className="flex items-start gap-4">
@@ -256,7 +255,7 @@ export default function PathDetails() {
                         disabled={!isEnrolled}
                       >
                         {isCompleted ? (
-                          <CheckCircle2 className="h-6 w-6 text-success" />
+                          <CheckCircle2 className="h-6 w-6 text-green-500" />
                         ) : (
                           <Circle className="h-6 w-6 text-muted-foreground hover:text-primary transition-colors" />
                         )}
@@ -265,7 +264,7 @@ export default function PathDetails() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
                           <span className="text-sm font-medium text-muted-foreground">
-                            Step {step.position}
+                            Step {step.position + 1}
                           </span>
                         </div>
                         <h3 className={cn(
@@ -279,21 +278,22 @@ export default function PathDetails() {
                         </p>
 
                         {/* Resources */}
-                        {step.resources.length > 0 && (
+                        {step.resources && step.resources.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {step.resources.map((resource) => {
-                              const Icon = resourceTypeIcons[resource.resourceType] || FileText;
+                              // API sends 'resource_type', map it to Icon
+                              const Icon = resourceTypeIcons[resource.resource_type] || FileText;
                               return (
                                 <a
                                   key={resource.id}
                                   href={resource.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg text-sm hover:bg-secondary/80 transition-colors"
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg text-sm hover:bg-secondary/80 transition-colors border"
                                 >
-                                  <Icon className="h-3.5 w-3.5" />
+                                  <Icon className="h-3.5 w-3.5 text-primary" />
                                   {resource.title}
-                                  <ExternalLink className="h-3 w-3" />
+                                  <ExternalLink className="h-3 w-3 text-muted-foreground" />
                                 </a>
                               );
                             })}
@@ -313,15 +313,6 @@ export default function PathDetails() {
                 </p>
               </div>
             )}
-          </TabsContent>
-
-          <TabsContent value="comments">
-            <CommentsSection
-              comments={comments}
-              pathId={path.id}
-              isAuthenticated={isAuthenticated}
-              onNavigateToLogin={() => navigate("/login")}
-            />
           </TabsContent>
         </Tabs>
       </section>
