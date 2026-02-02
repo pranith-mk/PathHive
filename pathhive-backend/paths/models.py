@@ -76,3 +76,18 @@ class Enrollment(models.Model):
 
     def __str__(self):
         return f"{self.student.username} enrolled in {self.learning_path.title}"
+
+class Comment(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    learning_path = models.ForeignKey(LearningPath, on_delete=models.CASCADE, related_name='comments')
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    #  Link to parent comment (Self-referential)
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='replies')
+
+    class Meta:
+        ordering = ['-created_at'] 
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on {self.learning_path.title}"

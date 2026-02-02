@@ -1,4 +1,4 @@
-import { User } from './index';
+
 
 // 1. Define Tag FIRST so Path can use it
 export interface Tag {
@@ -36,6 +36,7 @@ export interface Path {
   steps?: Step[];
   is_enrolled?: boolean;
   completed_steps?: string[];
+  comments_count?: number;
 }
 
 // 5. Payload for creating a path
@@ -59,3 +60,21 @@ export interface CreatePathPayload {
   is_published: boolean;
   steps: StepPayload[];
 }
+
+// Add Comment Interface
+export interface Comment {
+  id: number;
+  user: User;
+  text: string;
+  created_at: string;
+  parent: number | null;
+  replies?: Comment[];
+}
+
+export interface User {  
+  id: number | string;
+  username: string;
+  email?: string;
+  avatar?: string; // Optional if you use avatars
+}
+

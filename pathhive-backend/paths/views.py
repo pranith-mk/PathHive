@@ -3,12 +3,13 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action 
 from rest_framework.response import Response 
 from .models import LearningPath, Tag, Enrollment
-from .models import PathStep
+from .models import PathStep, Comment
 
 from .serializers import (
     LearningPathListSerializer, 
     LearningPathDetailSerializer, 
-    LearningPathCreateSerializer  # <--- Make sure to import this!
+    LearningPathCreateSerializer,  
+    CommentSerializer
 )
 
 class LearningPathViewSet(viewsets.ModelViewSet):
@@ -102,3 +103,68 @@ class LearningPathViewSet(viewsets.ModelViewSet):
         paths = LearningPath.objects.filter(creator=request.user)
         serializer = LearningPathListSerializer(paths, many=True, context={'request': request})
         return Response(serializer.data)
+
+    # 1. Get Comments for a Path
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
+    def comments(self, request, pk=None):
+        """
+        GET /api/paths/list/{id}/comments/
+        """
+        path = self.get_object()
+        comments = path.comments.all()
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
+
+    # 2. Add a Comment
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def add_comment(self, request, pk=None):
+        """
+        POST /api/paths/list/{id}/add_comment/
+        Body: { "text": "Great course!" }
+        """
+        path = self.get_object()
+        text = request.data.get('text')
+        parent_id = request.data.get('parent_id')
+
+        
+        if not text:
+            return Response({'error': 'Text is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if parent exists
+        parent_comment = None
+        if parent_id:
+            try:
+                parent_comment = Comment.objects.get(id=parent_id, learning_path=path)
+            except Comment.DoesNotExist:
+                return Response({'error': 'Parent comment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        comment = Comment.objects.create(
+            user=request.user,
+            learning_path=path,
+            text=text,
+            parent=parent_comment # <--- Save parent
+        )
+            
+    
+        
+        serializer = CommentSerializer(comment)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+    # 3. Delete a Comment
+    @action(detail=True, methods=['delete'], url_path='comments/(?P<comment_id>[^/.]+)', permission_classes=[permissions.IsAuthenticated])
+    def delete_comment(self, request, pk=None, comment_id=None):
+        """
+        DELETE /api/paths/list/{path_id}/comments/{comment_id}/
+        """
+        path = self.get_object()
+        comment = get_object_or_404(Comment, pk=comment_id, learning_path=path)
+
+        # Security Check: Only the owner can delete
+        if comment.user != request.user:
+            return Response(
+                {'error': 'You can only delete your own comments'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        comment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

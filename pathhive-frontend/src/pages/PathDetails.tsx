@@ -9,7 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { ReportDialog } from "@/components/reports/ReportDialog";
 import { RatingDialog } from "@/components/ratings/RatingDialog";
-import { useToast } from "@/hooks/use-toast"; // <--- Import Toast
+import { useToast } from "@/hooks/use-toast";
+// 1. Import the Comments Component
+import { CommentsSection } from "@/components/comments/CommentsSection";
 import {
   Star,
   Users,
@@ -46,8 +48,9 @@ const resourceTypeIcons: Record<string, any> = {
 export default function PathDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const { toast } = useToast(); // <--- Initialize Toast
+  // 1. UPDATE: Get 'user' from useAuth
+  const { isAuthenticated, user } = useAuth(); 
+  const { toast } = useToast();
   
   const [path, setPath] = useState<Path | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +58,7 @@ export default function PathDetails() {
 
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isEnrolled, setIsEnrolled] = useState(false);
-  const [isEnrolling, setIsEnrolling] = useState(false); // <--- New loading state for button
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
   // Fetch Data
   useEffect(() => {
@@ -70,7 +73,7 @@ export default function PathDetails() {
         }
 
         if (data.completed_steps) {
-          setCompletedSteps(data.completed_steps); // Database IDs might be numbers, ensure type match
+          setCompletedSteps(data.completed_steps);
       }
 
       } catch (err) {
@@ -112,7 +115,7 @@ export default function PathDetails() {
     : 0;
 
   const toggleStepCompletion = async (stepId: string) => {
-    // Optimistic Update (Update UI immediately)
+    // Optimistic Update
     setCompletedSteps((prev) =>
       prev.includes(stepId)
         ? prev.filter((id) => id !== stepId)
@@ -126,11 +129,9 @@ export default function PathDetails() {
         }
     } catch (error) {
         console.error("Failed to save progress");
-        // Optional: Revert state if API fails
     }
   };
 
-  // --- CONNECTED ENROLLMENT LOGIC ---
   const handleEnroll = async () => {
     if (!isAuthenticated) {
       toast({
@@ -232,8 +233,8 @@ export default function PathDetails() {
                 {path.creator && (
                   <ReportDialog
                     reportType="user"
-                    targetId={path.creator.id}
-                    targetName={path.creator.username} // Changed from fullName to username to match Type
+                    targetId={String(path.creator.id)}
+                    targetName={path.creator.username}
                     isAuthenticated={isAuthenticated}
                     onAuthRequired={() => navigate("/login")}
                     trigger={
@@ -272,7 +273,7 @@ export default function PathDetails() {
                     className="w-full mb-3 bg-orange-500 hover:bg-orange-600 text-white" 
                     size="lg" 
                     onClick={handleEnroll}
-                    disabled={isEnrolling} // Disable button while enrolling
+                    disabled={isEnrolling}
                   >
                     {isEnrolling ? (
                         <>
@@ -330,7 +331,10 @@ export default function PathDetails() {
         <Tabs defaultValue="curriculum" className="space-y-6">
           <TabsList>
             <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
-            <TabsTrigger value="comments" disabled>Comments (Coming Soon)</TabsTrigger>
+            {/* 2. Enable Comments Tab */}
+            <TabsTrigger value="comments">
+                Comments {path.comments_count !== undefined && `(${path.comments_count})`}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="curriculum" className="space-y-4">
@@ -412,6 +416,16 @@ export default function PathDetails() {
                 </p>
               </div>
             )}
+          </TabsContent>
+
+          {/* 3. Render Comments Section with CURRENT USER */}
+          <TabsContent value="comments">
+            <CommentsSection 
+                pathId={path.id} 
+                isAuthenticated={isAuthenticated}
+                currentUser={user} // <--- Added currentUser prop here
+                onNavigateToLogin={() => navigate("/login")} 
+            />
           </TabsContent>
         </Tabs>
       </section>

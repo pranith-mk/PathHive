@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import LearningPath, PathStep, Resource, Tag
+from .models import LearningPath, PathStep, Resource, Tag, Comment , Enrollment
 from users.serializers import UserSerializer
 
 # --- BASIC SERIALIZERS ---
@@ -41,10 +41,11 @@ class LearningPathDetailSerializer(serializers.ModelSerializer):
     
     is_enrolled = serializers.SerializerMethodField()
     completed_steps = serializers.SerializerMethodField()
+    comments_count = serializers.IntegerField(source='comments.count', read_only=True)
 
     class Meta:
         model = LearningPath
-        fields = ['id', 'title', 'description', 'difficulty', 'creator', 'tags', 'steps', 'created_at', 'is_published', 'is_enrolled','completed_steps']
+        fields = ['id', 'title', 'description', 'difficulty', 'creator', 'tags', 'steps', 'created_at', 'is_published', 'is_enrolled','completed_steps','comments_count']
 
     def get_is_enrolled(self, obj):
         # Check the 'request' context to see who is asking
@@ -52,7 +53,7 @@ class LearningPathDetailSerializer(serializers.ModelSerializer):
         if user.is_authenticated:
             return obj.enrollments.filter(student=user).exists()
         return False
-        
+
     def get_completed_steps(self, obj):
         user = self.context.get('request').user
         if user.is_authenticated:
@@ -119,3 +120,11 @@ class LearningPathCreateSerializer(serializers.ModelSerializer):
                 )
 
         return path
+
+        
+class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = Comment
+        fields = ['id', 'user', 'text', 'created_at', 'parent']
