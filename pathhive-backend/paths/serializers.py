@@ -32,15 +32,37 @@ class LearningPathListSerializer(serializers.ModelSerializer):
         model = LearningPath
         fields = ['id', 'title', 'difficulty', 'creator', 'tags', 'created_at', 'description', 'is_published']
 
+
+
 class LearningPathDetailSerializer(serializers.ModelSerializer):
-    """ Heavyweight: For the 'Start Learning' page. """
     creator = UserSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     steps = PathStepSerializer(many=True, read_only=True)
     
+    is_enrolled = serializers.SerializerMethodField()
+    completed_steps = serializers.SerializerMethodField()
+
     class Meta:
         model = LearningPath
-        fields = ['id', 'title', 'description', 'difficulty', 'creator', 'tags', 'steps', 'created_at', 'is_published']
+        fields = ['id', 'title', 'description', 'difficulty', 'creator', 'tags', 'steps', 'created_at', 'is_published', 'is_enrolled','completed_steps']
+
+    def get_is_enrolled(self, obj):
+        # Check the 'request' context to see who is asking
+        user = self.context.get('request').user
+        if user.is_authenticated:
+            return obj.enrollments.filter(student=user).exists()
+        return False
+        
+    def get_completed_steps(self, obj):
+        user = self.context.get('request').user
+        if user.is_authenticated:
+            try:
+                enrollment = obj.enrollments.get(student=user)
+                return enrollment.completed_steps.values_list('id', flat=True)
+            except Enrollment.DoesNotExist:
+                return []
+        return []
+
 
 # --- WRITE SERIALIZER (For creating data) ---
 

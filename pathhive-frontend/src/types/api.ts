@@ -34,6 +34,8 @@ export interface Path {
   is_published: boolean;
   created_at: string;
   steps?: Step[];
+  is_enrolled?: boolean;
+  completed_steps?: string[];
 }
 
 // 5. Payload for creating a path

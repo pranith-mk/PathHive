@@ -1,5 +1,6 @@
 from django.db import models
 from users.models import UserAccount
+from django.conf import settings
 import uuid
 
 # Source: 15 (TAG table)
@@ -62,3 +63,16 @@ class Resource(models.Model):
 
     def __str__(self):
         return self.title
+
+class Enrollment(models.Model):
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='enrollments')
+    learning_path = models.ForeignKey(LearningPath, on_delete=models.CASCADE, related_name='enrollments')
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+
+    completed_steps = models.ManyToManyField(PathStep, blank=True, related_name='completed_by')
+
+    class Meta:
+        unique_together = ('student', 'learning_path') # A user can't enroll twice in the same path
+
+    def __str__(self):
+        return f"{self.student.username} enrolled in {self.learning_path.title}"

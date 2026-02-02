@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
-// import { mockComments } from "@/data/mockData"; // Commented out for now
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-// import { CommentsSection } from "@/components/comments/CommentsSection"; // Keep if you want
 import { ReportDialog } from "@/components/reports/ReportDialog";
 import { RatingDialog } from "@/components/ratings/RatingDialog";
+import { useToast } from "@/hooks/use-toast"; // <--- Import Toast
 import {
   Star,
   Users,
@@ -31,7 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// 1. Import Service and Types
+// Import Service and Types
 import { pathService } from "@/lib/pathService";
 import { Path } from "@/types/api";
 
@@ -41,29 +40,39 @@ const resourceTypeIcons: Record<string, any> = {
   documentation: FileText,
   exercise: Code,
   project: Folder,
-  file: FileText // Added fallback for generic files
+  file: FileText
 };
 
 export default function PathDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { toast } = useToast(); // <--- Initialize Toast
   
-  // 2. Real Data State
   const [path, setPath] = useState<Path | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false); // <--- New loading state for button
 
-  // 3. Fetch Data from API
+  // Fetch Data
   useEffect(() => {
     const fetchPath = async () => {
       if (!id) return;
       try {
         const data = await pathService.getPathById(id);
         setPath(data);
+        // Sync enrollment status from Backend
+        if (data.is_enrolled) {
+          setIsEnrolled(true);
+        }
+
+        if (data.completed_steps) {
+          setCompletedSteps(data.completed_steps); // Database IDs might be numbers, ensure type match
+      }
+
       } catch (err) {
         console.error("Error fetching path:", err);
         setError("Failed to load path.");
@@ -75,7 +84,6 @@ export default function PathDetails() {
     fetchPath();
   }, [id]);
 
-  // 4. Loading State
   if (isLoading) {
     return (
       <MainLayout>
@@ -86,7 +94,6 @@ export default function PathDetails() {
     );
   }
 
-  // 5. Error/Not Found State
   if (error || !path) {
     return (
       <MainLayout>
@@ -99,27 +106,61 @@ export default function PathDetails() {
     );
   }
 
-  // 6. Safe Logic for Steps (API might return undefined if no steps exist)
   const steps = path.steps || [];
   const progress = steps.length > 0 
     ? (completedSteps.length / steps.length) * 100 
     : 0;
 
-  const toggleStepCompletion = (stepId: string) => {
+  const toggleStepCompletion = async (stepId: string) => {
+    // Optimistic Update (Update UI immediately)
     setCompletedSteps((prev) =>
       prev.includes(stepId)
         ? prev.filter((id) => id !== stepId)
         : [...prev, stepId]
     );
+
+    // Call API in background
+    try {
+        if (path?.id) {
+            await pathService.toggleStep(path.id, stepId);
+        }
+    } catch (error) {
+        console.error("Failed to save progress");
+        // Optional: Revert state if API fails
+    }
   };
 
-  const handleEnroll = () => {
+  // --- CONNECTED ENROLLMENT LOGIC ---
+  const handleEnroll = async () => {
     if (!isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please login to enroll in this path.",
+        variant: "destructive"
+      });
       navigate("/login");
       return;
     }
-    // TODO: Connect to backend enrollment API later
-    setIsEnrolled(true);
+
+    setIsEnrolling(true);
+
+    try {
+      await pathService.enrollInPath(path.id);
+      setIsEnrolled(true);
+      toast({
+        title: "Success!",
+        description: `You have successfully enrolled in ${path.title}.`,
+      });
+    } catch (error) {
+      console.error("Enrollment failed:", error);
+      toast({
+        title: "Error",
+        description: "Failed to enroll. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEnrolling(false);
+    }
   };
 
   return (
@@ -159,7 +200,6 @@ export default function PathDetails() {
               </p>
 
               <div className="flex flex-wrap gap-6 text-sm text-white/70">
-                {/* Note: We don't have rating/enrollment in API yet, so we mock or hide them */}
                 <span className="flex items-center gap-2">
                   <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
                   New
@@ -178,15 +218,35 @@ export default function PathDetails() {
               <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/10">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12 border-2 border-white/20">
-                     {/* Safe check for creator avatar */}
                     <AvatarImage src={undefined} /> 
-                    <AvatarFallback className="text-black">{path.creator?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="text-black bg-white">
+                        {path.creator?.username?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium">{path.creator?.username}</p>
                     <p className="text-sm text-white/60">Path Creator</p>
                   </div>
                 </div>
+                
+                {path.creator && (
+                  <ReportDialog
+                    reportType="user"
+                    targetId={path.creator.id}
+                    targetName={path.creator.username} // Changed from fullName to username to match Type
+                    isAuthenticated={isAuthenticated}
+                    onAuthRequired={() => navigate("/login")}
+                    trigger={
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-white/60 hover:text-white hover:bg-white/10"
+                      >
+                        <Flag className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             </div>
 
@@ -208,9 +268,23 @@ export default function PathDetails() {
                     </Button>
                   </>
                 ) : (
-                  <Button className="w-full mb-3 bg-orange-500 hover:bg-orange-600 text-white" size="lg" onClick={handleEnroll}>
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Learning
+                  <Button 
+                    className="w-full mb-3 bg-orange-500 hover:bg-orange-600 text-white" 
+                    size="lg" 
+                    onClick={handleEnroll}
+                    disabled={isEnrolling} // Disable button while enrolling
+                  >
+                    {isEnrolling ? (
+                        <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Enrolling...
+                        </>
+                    ) : (
+                        <>
+                            <Play className="h-4 w-4 mr-2" />
+                            Start Learning
+                        </>
+                    )}
                   </Button>
                 )}
                 
@@ -221,6 +295,29 @@ export default function PathDetails() {
                   <Button variant="outline" className="flex-1">
                     <Share2 className="h-4 w-4" />
                   </Button>
+                  <RatingDialog
+                    pathId={path.id}
+                    pathTitle={path.title}
+                    isAuthenticated={isAuthenticated}
+                    onAuthRequired={() => navigate("/login")}
+                    trigger={
+                      <Button variant="outline" className="flex-1">
+                        <Star className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
+                  <ReportDialog
+                    reportType="path"
+                    targetId={path.id}
+                    targetName={path.title}
+                    isAuthenticated={isAuthenticated}
+                    onAuthRequired={() => navigate("/login")}
+                    trigger={
+                      <Button variant="outline" className="flex-1">
+                        <Flag className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
                 </div>
               </div>
             </div>
@@ -257,7 +354,10 @@ export default function PathDetails() {
                         {isCompleted ? (
                           <CheckCircle2 className="h-6 w-6 text-green-500" />
                         ) : (
-                          <Circle className="h-6 w-6 text-muted-foreground hover:text-primary transition-colors" />
+                          <Circle className={cn(
+                              "h-6 w-6 transition-colors",
+                              !isEnrolled ? "text-muted-foreground/50 cursor-not-allowed" : "text-muted-foreground hover:text-primary"
+                          )} />
                         )}
                       </button>
                       
@@ -281,7 +381,6 @@ export default function PathDetails() {
                         {step.resources && step.resources.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {step.resources.map((resource) => {
-                              // API sends 'resource_type', map it to Icon
                               const Icon = resourceTypeIcons[resource.resource_type] || FileText;
                               return (
                                 <a
