@@ -12,6 +12,7 @@ export interface User {
   avatar?: string;
   isActive: boolean;
   createdAt: Date;
+  is_staff?: boolean;
 }
 
 export interface LearningPath {

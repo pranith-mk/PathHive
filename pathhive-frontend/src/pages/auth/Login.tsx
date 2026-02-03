@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // 1. Import useEffect
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -13,16 +13,27 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // 1. Get login from your new real AuthContext
-  const { login } = useAuth();
+  // 2. Get 'user' and 'isAuthenticated' to check role
+  const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // 3. EFFECT: Handle Redirection based on Role
+  // This runs automatically whenever 'user' or 'isAuthenticated' changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Check if user is admin (using the field we fixed earlier)
+      if (user.is_staff || user.role === 'admin') {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard"); // or "/" for home
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // 2. We don't use try/catch here because AuthContext handles the try/catch internally
-    // and returns 'true' for success or 'false' for failure.
     const success = await login(email, password);
 
     if (success) {
@@ -30,9 +41,9 @@ export default function Login() {
         title: "Welcome back!",
         description: "You've successfully logged in.",
       });
-      navigate("/dashboard");
+      // 4. REMOVED manual navigate() here. 
+      // We let the useEffect above handle it to ensure we have the user data first.
     } else {
-      // 3. If success is false, we explicitly show the error here
       toast({
         title: "Login Failed",
         description: "Invalid email or password. Please try again.",

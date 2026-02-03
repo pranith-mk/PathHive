@@ -91,3 +91,21 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.user.username} on {self.learning_path.title}"
+
+
+class Report(models.Model):
+    REPORT_TYPES = (
+        ('path', 'Path'),
+        ('comment', 'Comment'),
+        ('user', 'User'),
+    )
+    
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_filed')
+    report_type = models.CharField(max_length=20, choices=REPORT_TYPES)
+    target_id = models.CharField(max_length=255, help_text="ID of the path, comment, or user being reported")
+    reason = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_resolved = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.report_type} report by {self.reporter.username}"

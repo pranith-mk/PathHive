@@ -1,9 +1,13 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action 
 from rest_framework.response import Response 
 from .models import LearningPath, Tag, Enrollment
 from .models import PathStep, Comment
+from .models import Report
+from .serializers import ReportSerializer
+from django.contrib.auth import get_user_model
+from rest_framework.decorators import api_view, permission_classes
 
 from .serializers import (
     LearningPathListSerializer, 
@@ -168,3 +172,61 @@ class LearningPathViewSet(viewsets.ModelViewSet):
 
         comment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+#admin functionalities
+
+User = get_user_model()
+
+# 1. ViewSet for handling Reports (Anyone can create, only Admin can list)
+class ReportViewSet(viewsets.ModelViewSet):
+    queryset = Report.objects.all()
+    serializer_class = ReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Only admins can see the list of reports
+        if self.request.user.is_staff:
+            return Report.objects.all().order_by('-created_at')
+        return Report.objects.none() # Regular users see nothing
+
+    def perform_create(self, serializer):
+        serializer.save(reporter=self.request.user)
+
+    # Admin action to resolve a report
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def resolve(self, request, pk=None):
+        report = self.get_object()
+        report.is_resolved = True
+        report.save()
+        return Response({'status': 'resolved'})
+
+# 2. Admin Stats Endpoint
+@api_view(['GET'])
+@permission_classes([permissions.IsAdminUser])
+def admin_stats(request):
+    """
+    Returns counts for dashboard
+    """
+    stats = {
+        'total_users': User.objects.count(),
+        'total_paths': LearningPath.objects.count(),
+        'total_comments': Comment.objects.count(),
+        'pending_reports': Report.objects.filter(is_resolved=False).count(),
+    }
+    return Response(stats)
+
+
+
+class PathAdminViewSet(viewsets.ModelViewSet):
+    """
+    Admin-only viewset to manage paths (List, Delete, Search)
+    """
+    queryset = LearningPath.objects.all().order_by('-created_at')
+    serializer_class = LearningPathListSerializer
+    permission_classes = [permissions.IsAdminUser] # Strict Admin Access
+    
+    # Enable Searching
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['title', 'description']

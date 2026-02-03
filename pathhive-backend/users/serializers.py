@@ -24,6 +24,10 @@ class LoginSerializer(serializers.Serializer):
         raise serializers.ValidationError("Invalid credentials")
 
 class UserSerializer(serializers.ModelSerializer):
+
+    is_staff = serializers.BooleanField(source='is_admin', read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'full_name', 'role', 'avatar']
+        fields = ['id', 'username', 'email', 'full_name', 'role', 'avatar','is_staff','is_active','created_at']
+        read_only_fields = ['is_staff','created_at']

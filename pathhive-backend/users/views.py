@@ -1,10 +1,12 @@
 from django.contrib.auth import login, logout
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import permissions, status
+from rest_framework import permissions, status, viewsets, filters
 from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
+from .models import UserAccount 
+
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -43,3 +45,15 @@ class GetCSRFToken(APIView):
     def get(self, request):
         csrf_token = get_token(request)
         return JsonResponse({'csrfToken': csrf_token})
+
+class UserAdminViewSet(viewsets.ModelViewSet):
+    """
+    Admin-only viewset to manage users (List, Delete, Search)
+    """
+    queryset = UserAccount.objects.all().order_by('-created_at')
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAdminUser] # Strict Admin Access
+    
+    # Enable Searching
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['email', 'username', 'full_name']

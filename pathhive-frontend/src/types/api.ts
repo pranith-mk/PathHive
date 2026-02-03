@@ -37,6 +37,7 @@ export interface Path {
   is_enrolled?: boolean;
   completed_steps?: string[];
   comments_count?: number;
+  enrollmentCount?: number;
 }
 
 // 5. Payload for creating a path
@@ -72,9 +73,36 @@ export interface Comment {
 }
 
 export interface User {  
-  id: number | string;
+  id: string | number;
   username: string;
-  email?: string;
-  avatar?: string; // Optional if you use avatars
+  email: string;
+  role?: 'user' | 'admin';
+  full_name?: string; // Django might send this if your serializer includes it
+  avatar?: string;
+  is_staff?: boolean;
+  is_active?: boolean; 
+  created_at?: string;
 }
 
+export interface ReportPayload {
+  report_type: 'user' | 'path' | 'comment';
+  target_id: number | string;
+  reason: string;
+}
+
+export interface Report {
+  id: number;
+  reporter_name: string;
+  report_type: string;
+  target_id: number;
+  reason: string;
+  created_at: string;
+  is_resolved: boolean;
+}
+
+export interface AdminStats {
+  total_users: number;
+  total_paths: number;
+  total_comments: number;
+  pending_reports: number;
+}

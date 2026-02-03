@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import LearningPath, PathStep, Resource, Tag, Comment , Enrollment
+from .models import LearningPath, PathStep, Resource, Tag, Comment , Enrollment , Report
 from users.serializers import UserSerializer
 
 # --- BASIC SERIALIZERS ---
@@ -27,10 +27,11 @@ class LearningPathListSerializer(serializers.ModelSerializer):
     """ Lightweight: For the 'Browse' cards. """
     creator = UserSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
+    enrollmentCount = serializers.IntegerField(source='enrollments.count', read_only=True)
     
     class Meta:
         model = LearningPath
-        fields = ['id', 'title', 'difficulty', 'creator', 'tags', 'created_at', 'description', 'is_published']
+        fields = ['id', 'title', 'difficulty', 'creator', 'tags', 'created_at', 'description', 'is_published','enrollmentCount']
 
 
 
@@ -128,3 +129,11 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['id', 'user', 'text', 'created_at', 'parent']
+
+class ReportSerializer(serializers.ModelSerializer):
+    reporter_name = serializers.ReadOnlyField(source='reporter.username')
+
+    class Meta:
+        model = Report
+        fields = ['id', 'reporter_name', 'report_type', 'target_id', 'reason', 'created_at', 'is_resolved']
+        read_only_fields = ['reporter', 'created_at', 'is_resolved']

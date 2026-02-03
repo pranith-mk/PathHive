@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ReportType, ReportReason } from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -12,19 +11,23 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Flag, AlertTriangle } from "lucide-react";
+import { Flag, AlertTriangle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { pathService } from "@/lib/pathService"; // Import Service
+
+// Define types locally or import from your types file if you prefer
+type ReportType = 'user' | 'path' | 'comment';
 
 interface ReportDialogProps {
   reportType: ReportType;
-  targetId: string;
+  targetId: string | number; // Allow both
   targetName?: string;
   trigger?: React.ReactNode;
   isAuthenticated: boolean;
   onAuthRequired: () => void;
 }
 
-const reportReasons: { value: ReportReason; label: string; description: string }[] = [
+const reportReasons = [
   { value: "spam", label: "Spam", description: "Unwanted promotional content or repetitive posts" },
   { value: "harassment", label: "Harassment", description: "Bullying, threats, or targeted abuse" },
   { value: "inappropriate_content", label: "Inappropriate Content", description: "Adult, violent, or offensive material" },
@@ -48,7 +51,7 @@ export function ReportDialog({
   onAuthRequired,
 }: ReportDialogProps) {
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState<ReportReason | "">("");
+  const [selectedReason, setSelectedReason] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -60,28 +63,45 @@ export function ReportDialog({
     }
     setOpen(newOpen);
     if (!newOpen) {
-      setReason("");
+      setSelectedReason("");
       setDescription("");
     }
   };
 
   const handleSubmit = async () => {
-    if (!reason) return;
+    if (!selectedReason) return;
 
     setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
-    toast({
-      title: "Report submitted",
-      description: "Thank you for helping keep our community safe. We'll review your report shortly.",
-    });
+    // Combine category and description for the backend
+    const finalReason = `Category: ${selectedReason}\nDetails: ${description}`;
 
-    setIsSubmitting(false);
-    setOpen(false);
-    setReason("");
-    setDescription("");
+    try {
+      // Call Real API
+      await pathService.submitReport({
+        report_type: reportType,
+        target_id: targetId,
+        reason: finalReason
+      });
+
+      toast({
+        title: "Report submitted",
+        description: "Thank you. Our admins will review this shortly.",
+      });
+
+      setOpen(false);
+      setSelectedReason("");
+      setDescription("");
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Submission failed",
+        description: "Could not send report. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -109,15 +129,15 @@ export function ReportDialog({
         <div className="max-h-[60vh] overflow-y-auto space-y-4 py-4 pr-2">
           <div className="space-y-3">
             <Label className="text-sm font-medium">Reason for report</Label>
-            <RadioGroup value={reason} onValueChange={(val) => setReason(val as ReportReason)}>
+            <RadioGroup value={selectedReason} onValueChange={setSelectedReason}>
               {reportReasons.map((r) => (
-                <div key={r.value} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                <div key={r.value} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
                   <RadioGroupItem value={r.value} id={r.value} className="mt-0.5" />
                   <div className="flex-1">
-                    <Label htmlFor={r.value} className="font-medium cursor-pointer">
+                    <Label htmlFor={r.value} className="font-medium cursor-pointer block">
                       {r.label}
                     </Label>
-                    <p className="text-xs text-muted-foreground">{r.description}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{r.description}</p>
                   </div>
                 </div>
               ))}
@@ -145,9 +165,14 @@ export function ReportDialog({
           <Button
             variant="destructive"
             onClick={handleSubmit}
-            disabled={!reason || isSubmitting}
+            disabled={!selectedReason || isSubmitting}
           >
-            {isSubmitting ? "Submitting..." : "Submit Report"}
+            {isSubmitting ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                </>
+            ) : "Submit Report"}
           </Button>
         </div>
       </DialogContent>
