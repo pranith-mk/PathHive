@@ -4,35 +4,33 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen,
   PlusCircle,
-  Clock,
-  Star,
   ArrowRight,
-  Flame,
+  Loader2,
   Target,
-  Loader2
+  Layers
 } from "lucide-react";
 
-// 1. Import Backend Service and Types
 import { pathService } from "@/lib/pathService";
 import { Path } from "@/types/api";
+
+// 1. IMPORT THE REUSABLE COMPONENT
+import { PathCard } from "@/components/shared/PathCard"; 
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // 2. State for Real Data
+  // State for Real Data
   const [enrolledPaths, setEnrolledPaths] = useState<Path[]>([]);
   const [createdPaths, setCreatedPaths] = useState<Path[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 3. Fetch Data on Load
+  // Fetch Data on Load
   useEffect(() => {
-    // Redirect if not logged in
     if (!authLoading && !isAuthenticated) {
       navigate("/login");
       return;
@@ -58,14 +56,6 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  // 4. Mock Stats (Backend doesn't calculate these yet)
-  const stats = {
-    pathsCompleted: 0,
-    stepsCompleted: 0, // We can calculate this later if we update the serializer
-    hoursLearned: 0,
-    currentStreak: 0,
-  };
-
   if (authLoading || isLoading) {
     return (
       <MainLayout showFooter={false}>
@@ -75,47 +65,6 @@ export default function Dashboard() {
       </MainLayout>
     );
   }
-
-  // Helper Component for Cards (replaces generic PathCard to ensure Type safety)
-  const DashboardPathCard = ({ path, isEnrolled = false }: { path: Path, isEnrolled?: boolean }) => (
-    <div
-      key={path.id}
-      className="group bg-card rounded-xl border p-5 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer flex flex-col h-full"
-      onClick={() => navigate(`/path/${path.id}`)}
-    >
-      {/* Header */}
-      <div className="flex justify-between items-start mb-4">
-        <Badge variant="secondary" className="capitalize">{path.difficulty}</Badge>
-        {/* Placeholder for progress ring if we add it later */}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1">
-        <h3 className="font-display font-semibold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-          {path.title}
-        </h3>
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-          {path.description || "No description provided."}
-        </p>
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-4 border-t mt-auto">
-        <span className="text-xs text-muted-foreground">
-          By {path.creator?.username || "Unknown"}
-        </span>
-        {isEnrolled ? (
-          <Button variant="ghost" size="sm" className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10">
-            Continue <ArrowRight className="h-3 w-3 ml-1" />
-          </Button>
-        ) : (
-          <span className="text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-            View Details →
-          </span>
-        )}
-      </div>
-    </div>
-  );
 
   return (
     <MainLayout showFooter={false}>
@@ -144,24 +93,29 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        {/* Stats Grid */}
+        {/* --- REAL DATA STATS GRID --- */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: "Paths Enrolled", value: enrolledPaths.length, icon: Target, color: "text-green-500 bg-green-50" },
-            { label: "Paths Created", value: createdPaths.length, icon: BookOpen, color: "text-blue-500 bg-blue-50" },
-            { label: "Hours Learned", value: stats.hoursLearned, icon: Clock, color: "text-orange-500 bg-orange-50" },
-            { label: "Day Streak", value: stats.currentStreak, icon: Flame, color: "text-red-500 bg-red-50" },
-          ].map((stat, i) => (
-            <div key={i} className="bg-card rounded-xl border border-border p-4 md:p-5 hover:shadow-sm transition-shadow">
-              <div className="flex items-center gap-3 mb-2">
-                <div className={`p-2 rounded-lg ${stat.color}`}>
-                  <stat.icon className="h-4 w-4" />
-                </div>
+          {/* Stat 1: Joined */}
+          <div className="bg-card rounded-xl border border-border p-4 md:p-5 hover:shadow-sm transition-shadow">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg text-green-600 bg-green-100">
+                <Target className="h-4 w-4" />
               </div>
-              <p className="text-2xl md:text-3xl font-display font-bold">{stat.value}</p>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
             </div>
-          ))}
+            <p className="text-2xl md:text-3xl font-display font-bold">{enrolledPaths.length}</p>
+            <p className="text-sm text-muted-foreground">Paths Joined</p>
+          </div>
+
+          {/* Stat 2: Created */}
+          <div className="bg-card rounded-xl border border-border p-4 md:p-5 hover:shadow-sm transition-shadow">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg text-blue-600 bg-blue-100">
+                <Layers className="h-4 w-4" />
+              </div>
+            </div>
+            <p className="text-2xl md:text-3xl font-display font-bold">{createdPaths.length}</p>
+            <p className="text-sm text-muted-foreground">Paths Created</p>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -174,10 +128,6 @@ export default function Dashboard() {
             <TabsTrigger value="created">
               <PlusCircle className="h-4 w-4 mr-2" />
               Created Paths
-            </TabsTrigger>
-            <TabsTrigger value="bookmarks" disabled>
-              <Star className="h-4 w-4 mr-2" />
-              Bookmarks
             </TabsTrigger>
           </TabsList>
 
@@ -193,10 +143,10 @@ export default function Dashboard() {
                   </Button>
                 </div>
 
-                {/* Enrolled Grid */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {enrolledPaths.map((path) => (
-                    <DashboardPathCard key={path.id} path={path} isEnrolled={true} />
+                    // 2. USE PATHCARD (Passing isEnrolled in case your card supports it)
+                    <PathCard key={path.id} path={path} />
                   ))}
                 </div>
               </div>
@@ -224,7 +174,8 @@ export default function Dashboard() {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {createdPaths.map((path) => (
-                    <DashboardPathCard key={path.id} path={path} />
+                    // 3. USE PATHCARD
+                    <PathCard key={path.id} path={path} />
                   ))}
                 </div>
               </div>
@@ -240,12 +191,6 @@ export default function Dashboard() {
                 </Button>
               </div>
             )}
-          </TabsContent>
-
-          <TabsContent value="bookmarks">
-            <div className="text-center py-16 bg-muted/30 rounded-xl">
-              <p className="text-muted-foreground">Bookmarks coming soon!</p>
-            </div>
           </TabsContent>
         </Tabs>
       </div>

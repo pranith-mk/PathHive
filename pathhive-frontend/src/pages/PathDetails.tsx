@@ -29,11 +29,9 @@ import {
   Star,
   Users,
   BookOpen,
-  Play, // Kept if you want it elsewhere, but unused for the button now
   CheckCircle2,
   Circle,
   ExternalLink,
-  Bookmark,
   Share2,
   ArrowLeft,
   FileText,
@@ -46,7 +44,7 @@ import {
   Trash2,
   ShieldCheck,
   UserPlus,
-  LogOut, // <--- Added LogOut Icon
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +73,7 @@ export default function PathDetails() {
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isJoined, setIsJoined] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
-  const [isLeaving, setIsLeaving] = useState(false); // <--- New State for Unenroll Loading
+  const [isLeaving, setIsLeaving] = useState(false);
 
   // Reviews & Ratings State
   const [refreshReviews, setRefreshReviews] = useState(0);
@@ -162,7 +160,6 @@ export default function PathDetails() {
     }
   };
 
-  // --- NEW: Handle Leave Path ---
   const handleLeavePath = async () => {
     if (!path) return;
     setIsLeaving(true);
@@ -175,6 +172,40 @@ export default function PathDetails() {
       toast({ title: "Error", description: "Failed to leave path.", variant: "destructive" });
     } finally {
       setIsLeaving(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!path) return;
+
+    const shareData = {
+      title: path.title,
+      text: `Check out this learning path: ${path.title} on PathHive!`,
+      url: window.location.href,
+    };
+
+    // 1. Try Native Share (Mobile)
+    if (navigator.share && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log("Share cancelled");
+      }
+    } else {
+      // 2. Fallback: Clipboard Copy (Desktop)
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        toast({
+          title: "Link copied!",
+          description: "Path URL has been copied to your clipboard.",
+        });
+      } catch (err) {
+        toast({
+          title: "Failed to copy",
+          description: "Could not copy link manually.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -311,7 +342,7 @@ export default function PathDetails() {
                   <>
                     {/* Progress Bar (Only show if joined) */}
                     {isJoined && (
-                      <div className="mb-4">
+                      <div className="mb-6">
                         <div className="flex justify-between text-sm mb-2">
                           <span className="text-slate-500">Your Progress</span>
                           <span className="font-medium">{Math.round(progress)}%</span>
@@ -320,157 +351,165 @@ export default function PathDetails() {
                       </div>
                     )}
 
-                    {/* Button Logic: Join vs Leave */}
-                    {isJoined ? (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            className="w-full mb-3 bg-red-600 hover:bg-red-700 text-white"
-                            size="lg"
-                            disabled={isLeaving}
-                          >
-                            {isLeaving ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <LogOut className="h-4 w-4 mr-2" />
-                                Leave Path
-                              </>
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Leave this path?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to unenroll from <span className="font-semibold text-foreground">"{path.title}"</span>?
-                              <br /><br />
-                              <span className="text-red-600 font-medium">Warning:</span> Your progress (completed steps) will be permanently lost.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleLeavePath}
-                              className="bg-red-600 hover:bg-red-700 text-white"
+                    {/* ACTION BUTTONS GRID */}
+                    <div className="space-y-3">
+                      
+                      {isJoined ? (
+                        /* --- JOINED STATE UI --- */
+                        <>
+                          {/* Row 1: Positive Actions (Share & Rate) */}
+                          <div className="flex gap-3">
+                            {/* Primary: Share (Solid) */}
+                            <Button 
+                              className="flex-1 bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
+                              onClick={handleShare}
                             >
-                              Yes, Leave Path
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    ) : (
-                      <Button
-                        className="w-full mb-3 bg-orange-500 hover:bg-orange-600 text-white"
-                        size="lg"
-                        onClick={handleJoin}
-                        disabled={isJoining}
-                      >
-                        {isJoining ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Joining...
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Join Path
-                          </>
-                        )}
-                      </Button>
-                    )}
+                              <Share2 className="h-4 w-4 mr-2" />
+                              Share
+                            </Button>
+
+                            {/* Secondary: Rate (Outline) */}
+                            <RatingDialog
+                              pathId={path.id}
+                              pathTitle={path.title}
+                              isAuthenticated={isAuthenticated}
+                              onAuthRequired={() => navigate("/login")}
+                              onSuccess={() => setRefreshReviews(prev => prev + 1)}
+                              existingReview={userReview}
+                              trigger={
+                                <Button 
+                                  variant="outline" 
+                                  className={cn(
+                                    "flex-1 border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800",
+                                    userReview && "bg-orange-50 border-orange-300"
+                                  )}
+                                >
+                                  <Star className={cn("h-4 w-4 mr-2", userReview && "fill-orange-500 text-orange-500")} />
+                                  {userReview ? "Rated" : "Rate"}
+                                </Button>
+                              }
+                            />
+                          </div>
+
+                          {/* Row 2: Maintenance Actions (Subtle Outlines) */}
+                          <div className="pt-2 flex flex-col gap-2">
+                             {/* Report (Subtle Gray Outline) */}
+                             <ReportDialog
+                                reportType="path"
+                                targetId={path.id}
+                                targetName={path.title}
+                                isAuthenticated={isAuthenticated}
+                                onAuthRequired={() => navigate("/login")}
+                                trigger={
+                                  <Button variant="outline" size="sm" className="w-full border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                                    <Flag className="h-4 w-4 mr-2" />
+                                    Report this Path
+                                  </Button>
+                                }
+                              />
+
+                              {/* Leave Path (Subtle Red Outline) */}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="w-full border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200"
+                                    disabled={isLeaving}
+                                  >
+                                    {isLeaving ? (
+                                      <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                    ) : (
+                                      <LogOut className="h-3 w-3 mr-2" />
+                                    )}
+                                    Leave Path
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                   <AlertDialogHeader>
+                                      <AlertDialogTitle>Leave this path?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                          Are you sure you want to unenroll from <span className="font-semibold text-foreground">"{path.title}"</span>?
+                                          <br /><br />
+                                          <span className="text-red-600 font-medium">Warning:</span> Your progress (completed steps) will be permanently lost.
+                                      </AlertDialogDescription>
+                                   </AlertDialogHeader>
+                                   <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={handleLeavePath} className="bg-red-600 hover:bg-red-700 text-white">
+                                          Yes, Leave Path
+                                      </AlertDialogAction>
+                                   </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                          </div>
+                        </>
+                      ) : (
+                        /* --- NOT JOINED STATE --- */
+                        <Button
+                          className="w-full bg-orange-500 hover:bg-orange-600 text-white shadow-md"
+                          size="lg"
+                          onClick={handleJoin}
+                          disabled={isJoining}
+                        >
+                          {isJoining ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Joining...
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              Join Path for Free
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </>
                 ) : (
-                  <div className="mb-4 p-4 bg-slate-50 border rounded-lg flex gap-3 items-center">
-                    <ShieldCheck className="h-8 w-8 text-primary" />
-                    <div>
-                      <p className="font-semibold text-sm">You created this path</p>
-                      <p className="text-xs text-muted-foreground">Manage content below</p>
-                    </div>
-                  </div>
+                   /* --- OWNER STATE --- */
+                   <div className="mb-4 p-4 bg-slate-50 border rounded-lg flex gap-3 items-center">
+                      <ShieldCheck className="h-8 w-8 text-primary" />
+                      <div>
+                        <p className="font-semibold text-sm">You created this path</p>
+                        <p className="text-xs text-muted-foreground">Manage content below</p>
+                      </div>
+                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  {/* --- OWNER CONTROLS --- */}
-                  {isOwner ? (
-                    <>
-                      <Button
-                        variant="secondary"
-                        className="flex-1 font-semibold text-primary"
-                        onClick={() => navigate(`/path/${path.id}/edit`)}
-                      >
-                        <PenSquare className="h-4 w-4 mr-2" />
-                        Edit Path
-                      </Button>
+                {/* --- OWNER CONTROLS (Bottom Buttons) --- */}
+                {isOwner && (
+                  <div className="flex gap-2 mt-4">
+                     <Button
+                       variant="secondary"
+                       className="flex-1 font-semibold text-primary"
+                       onClick={() => navigate(`/path/${path.id}/edit`)}
+                     >
+                       <PenSquare className="h-4 w-4 mr-2" />
+                       Edit
+                     </Button>
 
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" className="flex-1">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Path
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
+                     <AlertDialog>
+                       <AlertDialogTrigger asChild>
+                         <Button variant="destructive" className="flex-1">
+                           <Trash2 className="h-4 w-4 mr-2" />
+                           Delete
+                         </Button>
+                       </AlertDialogTrigger>
+                       <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the learning path
-                              <span className="font-semibold text-foreground"> "{path.title}" </span>
-                              and remove all associated steps and resources.
-                            </AlertDialogDescription>
+                            <AlertDialogTitle>Delete Path?</AlertDialogTitle>
+                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleConfirmDelete}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete Path
-                            </AlertDialogAction>
+                            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
                           </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </>
-                  ) : (
-                    /* --- STUDENT CONTROLS --- */
-                    <>
-                      <Button variant="outline" className="flex-1">
-                        <Bookmark className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" className="flex-1">
-                        <Share2 className="h-4 w-4" />
-                      </Button>
-
-                      <RatingDialog
-                        pathId={path.id}
-                        pathTitle={path.title}
-                        isAuthenticated={isAuthenticated}
-                        onAuthRequired={() => navigate("/login")}
-                        onSuccess={() => setRefreshReviews(prev => prev + 1)}
-                        existingReview={userReview}
-                        trigger={
-                          <Button variant={userReview ? "secondary" : "outline"} className="flex-1">
-                            <Star className={cn("h-4 w-4", userReview && "fill-primary text-primary")} />
-                            {userReview && <span className="ml-2 text-xs">Edit</span>}
-                          </Button>
-                        }
-                      />
-
-                      <ReportDialog
-                        reportType="path"
-                        targetId={path.id}
-                        targetName={path.title}
-                        isAuthenticated={isAuthenticated}
-                        onAuthRequired={() => navigate("/login")}
-                        trigger={
-                          <Button variant="outline" className="flex-1">
-                            <Flag className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
-                    </>
-                  )}
-                </div>
+                       </AlertDialogContent>
+                     </AlertDialog>
+                  </div>
+                )}
               </div>
             </div>
           </div>
