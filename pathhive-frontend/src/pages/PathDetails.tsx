@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { ReportDialog } from "@/components/reports/ReportDialog";
-import { RatingDialog } from "@/components/ratings/RatingDialog"; 
+import { RatingDialog } from "@/components/ratings/RatingDialog";
 import { useToast } from "@/hooks/use-toast";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ReviewsList } from "@/components/ratings/ReviewList";
@@ -29,7 +29,7 @@ import {
   Star,
   Users,
   BookOpen,
-  Play,
+  Play, // Kept if you want it elsewhere, but unused for the button now
   CheckCircle2,
   Circle,
   ExternalLink,
@@ -45,7 +45,8 @@ import {
   PenSquare,
   Trash2,
   ShieldCheck,
-  UserPlus, // Changed Icon for Join
+  UserPlus,
+  LogOut, // <--- Added LogOut Icon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -66,14 +67,15 @@ export default function PathDetails() {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
-  
+
   const [path, setPath] = useState<Path | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
-  const [isJoined, setIsJoined] = useState(false); // Renamed state for clarity (internal logic stays same)
+  const [isJoined, setIsJoined] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false); // <--- New State for Unenroll Loading
 
   // Reviews & Ratings State
   const [refreshReviews, setRefreshReviews] = useState(0);
@@ -86,14 +88,13 @@ export default function PathDetails() {
       try {
         const data = await pathService.getPathById(id);
         setPath(data);
-        
-        // Backend still sends 'is_enrolled', we map it to UI state
+
         if (data.is_enrolled) setIsJoined(true);
         if (data.completed_steps) setCompletedSteps(data.completed_steps);
 
         if (isAuthenticated) {
-            const myReview = await pathService.getUserReview(id);
-            setUserReview(myReview);
+          const myReview = await pathService.getUserReview(id);
+          setUserReview(myReview);
         }
 
       } catch (err) {
@@ -111,7 +112,7 @@ export default function PathDetails() {
 
   const handleConfirmDelete = async () => {
     if (!path) return;
-    
+
     try {
       await pathService.deletePathCreator(path.id);
       toast({ title: "Path deleted successfully" });
@@ -131,9 +132,9 @@ export default function PathDetails() {
     );
 
     try {
-        if (path?.id) await pathService.toggleStep(path.id, stepId);
+      if (path?.id) await pathService.toggleStep(path.id, stepId);
     } catch (error) {
-        console.error("Failed to save progress");
+      console.error("Failed to save progress");
     }
   };
 
@@ -151,7 +152,6 @@ export default function PathDetails() {
     setIsJoining(true);
 
     try {
-      // Backend still uses 'enrollInPath'
       await pathService.enrollInPath(path.id);
       setIsJoined(true);
       toast({ title: "Welcome!", description: `You have successfully joined ${path.title}.` });
@@ -159,6 +159,22 @@ export default function PathDetails() {
       toast({ title: "Error", description: "Failed to join. Please try again later.", variant: "destructive" });
     } finally {
       setIsJoining(false);
+    }
+  };
+
+  // --- NEW: Handle Leave Path ---
+  const handleLeavePath = async () => {
+    if (!path) return;
+    setIsLeaving(true);
+    try {
+      await pathService.unenrollFromPath(path.id);
+      setIsJoined(false);
+      setCompletedSteps([]); // Clear progress locally
+      toast({ title: "Left Path", description: "You have successfully unenrolled." });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to leave path.", variant: "destructive" });
+    } finally {
+      setIsLeaving(false);
     }
   };
 
@@ -186,8 +202,8 @@ export default function PathDetails() {
   }
 
   const steps = path.steps || [];
-  const progress = steps.length > 0 
-    ? (completedSteps.length / steps.length) * 100 
+  const progress = steps.length > 0
+    ? (completedSteps.length / steps.length) * 100
     : 0;
 
   // Check Ownership
@@ -245,7 +261,7 @@ export default function PathDetails() {
                   <BookOpen className="h-4 w-4" />
                   {steps.length} steps
                 </span>
-                 <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   {path.enrollmentCount || 0} joined
                 </span>
@@ -255,9 +271,9 @@ export default function PathDetails() {
               <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/10">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12 border-2 border-white/20">
-                    <AvatarImage src={undefined} /> 
+                    <AvatarImage src={undefined} />
                     <AvatarFallback className="text-black bg-white">
-                        {path.creator?.username?.charAt(0).toUpperCase() || "U"}
+                      {path.creator?.username?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -265,7 +281,7 @@ export default function PathDetails() {
                     <p className="text-sm text-white/60">Path Creator</p>
                   </div>
                 </div>
-                
+
                 {path.creator && !isOwner && (
                   <ReportDialog
                     reportType="user"
@@ -274,9 +290,9 @@ export default function PathDetails() {
                     isAuthenticated={isAuthenticated}
                     onAuthRequired={() => navigate("/login")}
                     trigger={
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-white/60 hover:text-white hover:bg-white/10"
                       >
                         <Flag className="h-4 w-4" />
@@ -290,10 +306,11 @@ export default function PathDetails() {
             {/* Action Card */}
             <div className="lg:col-span-1">
               <div className="bg-white text-slate-900 rounded-xl p-6 shadow-xl border border-slate-200">
-                
+
                 {!isOwner ? (
                   <>
-                    {isJoined ? (
+                    {/* Progress Bar (Only show if joined) */}
+                    {isJoined && (
                       <div className="mb-4">
                         <div className="flex justify-between text-sm mb-2">
                           <span className="text-slate-500">Your Progress</span>
@@ -301,57 +318,91 @@ export default function PathDetails() {
                         </div>
                         <Progress value={progress} className="h-2" />
                       </div>
-                    ) : null}
+                    )}
 
+                    {/* Button Logic: Join vs Leave */}
                     {isJoined ? (
-                        <Button className="w-full mb-3" size="lg">
-                            <Play className="h-4 w-4 mr-2" />
-                            Continue Learning
-                        </Button>
-                    ) : (
-                        <Button 
-                            className="w-full mb-3 bg-blue-600 hover:bg-blue-700 text-white" 
-                            size="lg" 
-                            onClick={handleJoin}
-                            disabled={isJoining}
-                        >
-                            {isJoining ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Joining...
-                                </>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            className="w-full mb-3 bg-red-600 hover:bg-red-700 text-white"
+                            size="lg"
+                            disabled={isLeaving}
+                          >
+                            {isLeaving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                                <>
-                                    <UserPlus className="h-4 w-4 mr-2" />
-                                    Join Path
-                                </>
+                              <>
+                                <LogOut className="h-4 w-4 mr-2" />
+                                Leave Path
+                              </>
                             )}
-                        </Button>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Leave this path?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to unenroll from <span className="font-semibold text-foreground">"{path.title}"</span>?
+                              <br /><br />
+                              <span className="text-red-600 font-medium">Warning:</span> Your progress (completed steps) will be permanently lost.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleLeavePath}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              Yes, Leave Path
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      <Button
+                        className="w-full mb-3 bg-orange-500 hover:bg-orange-600 text-white"
+                        size="lg"
+                        onClick={handleJoin}
+                        disabled={isJoining}
+                      >
+                        {isJoining ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Joining...
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Join Path
+                          </>
+                        )}
+                      </Button>
                     )}
                   </>
                 ) : (
-                    <div className="mb-4 p-4 bg-slate-50 border rounded-lg flex gap-3 items-center">
-                        <ShieldCheck className="h-8 w-8 text-primary" />
-                        <div>
-                            <p className="font-semibold text-sm">You created this path</p>
-                            <p className="text-xs text-muted-foreground">Manage content below</p>
-                        </div>
+                  <div className="mb-4 p-4 bg-slate-50 border rounded-lg flex gap-3 items-center">
+                    <ShieldCheck className="h-8 w-8 text-primary" />
+                    <div>
+                      <p className="font-semibold text-sm">You created this path</p>
+                      <p className="text-xs text-muted-foreground">Manage content below</p>
                     </div>
+                  </div>
                 )}
-                
+
                 <div className="flex gap-2">
                   {/* --- OWNER CONTROLS --- */}
                   {isOwner ? (
                     <>
-                      <Button 
-                        variant="secondary" 
+                      <Button
+                        variant="secondary"
                         className="flex-1 font-semibold text-primary"
                         onClick={() => navigate(`/path/${path.id}/edit`)}
                       >
                         <PenSquare className="h-4 w-4 mr-2" />
                         Edit Path
                       </Button>
-                      
+
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="destructive" className="flex-1">
@@ -363,15 +414,15 @@ export default function PathDetails() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the learning path 
+                              This action cannot be undone. This will permanently delete the learning path
                               <span className="font-semibold text-foreground"> "{path.title}" </span>
                               and remove all associated steps and resources.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={handleConfirmDelete} 
+                            <AlertDialogAction
+                              onClick={handleConfirmDelete}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Delete Path
@@ -389,14 +440,14 @@ export default function PathDetails() {
                       <Button variant="outline" className="flex-1">
                         <Share2 className="h-4 w-4" />
                       </Button>
-                      
+
                       <RatingDialog
                         pathId={path.id}
                         pathTitle={path.title}
                         isAuthenticated={isAuthenticated}
                         onAuthRequired={() => navigate("/login")}
                         onSuccess={() => setRefreshReviews(prev => prev + 1)}
-                        existingReview={userReview} 
+                        existingReview={userReview}
                         trigger={
                           <Button variant={userReview ? "secondary" : "outline"} className="flex-1">
                             <Star className={cn("h-4 w-4", userReview && "fill-primary text-primary")} />
@@ -432,10 +483,10 @@ export default function PathDetails() {
           <TabsList>
             <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
             <TabsTrigger value="comments">
-                Comments {path.comments_count !== undefined && `(${path.comments_count})`}
+              Comments {path.comments_count !== undefined && `(${path.comments_count})`}
             </TabsTrigger>
             <TabsTrigger value="reviews">
-                Reviews {path.review_count !== undefined && `(${path.review_count})`}
+              Reviews {path.review_count !== undefined && `(${path.review_count})`}
             </TabsTrigger>
           </TabsList>
 
@@ -452,21 +503,25 @@ export default function PathDetails() {
                     )}
                   >
                     <div className="flex items-start gap-4">
-                      <button
-                        onClick={() => toggleStepCompletion(step.id)}
-                        className={cn("mt-0.5 flex-shrink-0", isOwner && "cursor-default")} 
-                        disabled={!isJoined && !isOwner}
-                      >
-                        {isCompleted ? (
-                          <CheckCircle2 className="h-6 w-6 text-green-500" />
-                        ) : (
-                          <Circle className={cn(
+
+                      {/* Only show the completion circle if Joined or Owner */}
+                      {(isJoined || isOwner) && (
+                        <button
+                          onClick={() => toggleStepCompletion(step.id)}
+                          className={cn("mt-0.5 flex-shrink-0", isOwner && "cursor-default")}
+                          disabled={!isJoined && !isOwner}
+                        >
+                          {isCompleted ? (
+                            <CheckCircle2 className="h-6 w-6 text-green-500" />
+                          ) : (
+                            <Circle className={cn(
                               "h-6 w-6 transition-colors",
                               (!isJoined && !isOwner) ? "text-muted-foreground/50 cursor-not-allowed" : "text-muted-foreground hover:text-primary"
-                          )} />
-                        )}
-                      </button>
-                      
+                            )} />
+                          )}
+                        </button>
+                      )}
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
                           <span className="text-sm font-medium text-muted-foreground">
@@ -521,18 +576,18 @@ export default function PathDetails() {
           </TabsContent>
 
           <TabsContent value="comments">
-            <CommentsSection 
-                pathId={path.id} 
-                isAuthenticated={isAuthenticated}
-                currentUser={user}
-                onNavigateToLogin={() => navigate("/login")} 
+            <CommentsSection
+              pathId={path.id}
+              isAuthenticated={isAuthenticated}
+              currentUser={user}
+              onNavigateToLogin={() => navigate("/login")}
             />
           </TabsContent>
 
           <TabsContent value="reviews">
-            <ReviewsList 
-                pathId={path.id} 
-                refreshTrigger={refreshReviews} 
+            <ReviewsList
+              pathId={path.id}
+              refreshTrigger={refreshReviews}
             />
           </TabsContent>
 

@@ -104,6 +104,19 @@ class LearningPathViewSet(viewsets.ModelViewSet):
         serializer = LearningPathListSerializer(paths, many=True, context={'request': request})
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def unenroll(self, request, pk=None):
+        """
+        Endpoint: POST /api/paths/{id}/unenroll/
+        """
+        path = self.get_object()
+        # Delete the enrollment record
+        deleted_count, _ = Enrollment.objects.filter(student=request.user, learning_path=path).delete()
+        
+        if deleted_count > 0:
+            return Response({'status': 'unenrolled'}, status=status.HTTP_200_OK)
+        return Response({'status': 'not_enrolled'}, status=status.HTTP_400_BAD_REQUEST)
+
     # 2. Get courses I created
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def created_by_me(self, request):

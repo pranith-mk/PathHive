@@ -44,7 +44,7 @@ const getNotificationTitle = (type: string): string => {
     switch (type) {
         case 'comment': return "New Comment";
         case 'reply': return "New Reply";
-        case 'enrollment': return "New Student";
+        case 'enrollment': return "New Learner";
         case 'review': return "New Review";
         // 3. FIX: Add Title for Report
         case 'report':
