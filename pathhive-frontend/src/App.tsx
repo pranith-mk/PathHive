@@ -21,6 +21,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import NotFound from "./pages/NotFound";
 
+
 const queryClient = new QueryClient();
 
 const AIAssistantWrapper = () => {
@@ -68,6 +69,8 @@ const App = () => {
 
               <Route path="/create-path" element={<ProtectedRoute><PathEditor /></ProtectedRoute>} />
               <Route path="/path/:id/edit" element={<ProtectedRoute><PathEditor /></ProtectedRoute>} />
+
+              
             </Routes>
             <AIAssistantWrapper />
           

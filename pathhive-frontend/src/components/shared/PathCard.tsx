@@ -26,67 +26,84 @@ export const PathCard = ({ path }: PathCardProps) => {
   };
 
   return (
-    <Link to={`/path/${path.id}`}>
-      <Card className="h-full transition-all hover:shadow-md border rounded-xl overflow-hidden">
-        <CardContent className="p-5 flex flex-col h-full">
-          
-          {/* === Header: Difficulty & Rating === */}
-          <div className="flex justify-between items-center mb-3">
-            <Badge 
-              className={cn("font-normal capitalize", getDifficultyColor(path.difficulty))}
-            >
-              {path.difficulty}
+    <Card className="h-full transition-all hover:shadow-md border rounded-xl overflow-hidden relative group">
+      {/* 1. Main Link Covering the Card (Absolute Overlay) */}
+      <Link to={`/path/${path.id}`} className="absolute inset-0 z-10" />
+
+      <CardContent className="p-5 flex flex-col h-full">
+        
+        {/* === Header: Difficulty & Rating === */}
+        <div className="flex justify-between items-center mb-3">
+          <Badge 
+            className={cn("font-normal capitalize", getDifficultyColor(path.difficulty))}
+          >
+            {path.difficulty}
+          </Badge>
+          <div className="flex items-center gap-1.5 text-sm font-medium">
+            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+            {path.average_rating ? path.average_rating.toFixed(1) : "New"}
+          </div>
+        </div>
+
+        {/* === Title & Description === */}
+        <h3 className="text-lg font-semibold mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+          {path.title}
+        </h3>
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-grow">
+          {path.description}
+        </p>
+
+        {/* === Tags === */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {path.tags?.slice(0, 3).map((tag) => (
+            <Badge key={tag.id} variant="secondary" className="text-xs font-normal">
+              {tag.name}
             </Badge>
-            <div className="flex items-center gap-1.5 text-sm font-medium">
-              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-              {path.average_rating ? path.average_rating.toFixed(1) : "New"}
-            </div>
-          </div>
+          ))}
+        </div>
 
-          {/* === Title & Description === */}
-          <h3 className="text-lg font-semibold mb-2 line-clamp-1">
-            {path.title}
-          </h3>
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-grow">
-            {path.description}
-          </p>
-
-          {/* === Tags === */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {path.tags?.slice(0, 3).map((tag) => (
-              <Badge key={tag.id} variant="secondary" className="text-xs font-normal">
-                {tag.name}
-              </Badge>
-            ))}
+        {/* === Footer: Stats & Creator === */}
+        <div className="flex justify-between items-center text-sm text-muted-foreground pt-4 border-t">
+          <div className="flex gap-4">
+            <span className="flex items-center gap-1.5">
+              <BookOpen className="h-4 w-4" />
+              {path.steps?.length || 0} steps
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Users className="h-4 w-4" />
+              {path.enrollmentCount || 0} joined
+            </span>
           </div>
-
-          {/* === Footer: Stats & Creator === */}
-          <div className="flex justify-between items-center text-sm text-muted-foreground pt-4 border-t">
-            <div className="flex gap-4">
-              <span className="flex items-center gap-1.5">
-                <BookOpen className="h-4 w-4" />
-                {path.steps?.length || 0} steps
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
-                {path.enrollmentCount || 0} joined
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={undefined} />
-                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                    {path.creator?.username?.charAt(0).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <span className="truncate max-w-[100px]">
-                by {path.creator?.username || "Unknown"}
-              </span>
-            </div>
+          
+          {/* 2. Creator Link (Positioned ABOVE the main card link with z-20) */}
+          <div className="relative z-20">
+            {path.creator ? (
+               <Link 
+                 to={`/creator/${path.creator.id}`}
+                 className="flex items-center gap-2 hover:text-primary transition-colors"
+               >
+                 <Avatar className="h-6 w-6">
+                   {/* Attempt to use avatar if available on creator object */}
+                   <AvatarImage src={(path.creator as any).avatar || undefined} />
+                   <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                       {path.creator.username?.charAt(0).toUpperCase() || "U"}
+                   </AvatarFallback>
+                 </Avatar>
+                 <span className="truncate max-w-[100px]">
+                   by {path.creator.username}
+                 </span>
+               </Link>
+            ) : (
+                <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-[10px]">U</AvatarFallback>
+                    </Avatar>
+                    <span>Unknown</span>
+                </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
-    </Link>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom"; // Added Link
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -121,6 +121,7 @@ export default function PathDetails() {
   };
 
   const toggleStepCompletion = async (stepId: string) => {
+    // Prevent creator from marking their own steps as "completed" (optional logic, can remove if you want creators to test it)
     if (isOwner) return;
 
     setCompletedSteps((prev) =>
@@ -298,20 +299,25 @@ export default function PathDetails() {
                 </span>
               </div>
 
-              {/* Creator */}
+              {/* Creator Section (UPDATED WITH LINK) */}
               <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/10">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 border-2 border-white/20">
+                <Link 
+                  to={`/creator/${path.creator?.id}`}
+                  className="flex items-center gap-3 hover:opacity-80 transition-opacity group"
+                >
+                  <Avatar className="h-12 w-12 border-2 border-white/20 group-hover:border-white/40 transition-colors">
                     <AvatarImage src={undefined} />
                     <AvatarFallback className="text-black bg-white">
                       {path.creator?.username?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{path.creator?.username}</p>
+                    <p className="font-medium group-hover:underline underline-offset-4">
+                      {path.creator?.username}
+                    </p>
                     <p className="text-sm text-white/60">Path Creator</p>
                   </div>
-                </div>
+                </Link>
 
                 {path.creator && !isOwner && (
                   <ReportDialog
@@ -481,33 +487,33 @@ export default function PathDetails() {
                 {/* --- OWNER CONTROLS (Bottom Buttons) --- */}
                 {isOwner && (
                   <div className="flex gap-2 mt-4">
-                     <Button
-                       variant="secondary"
-                       className="flex-1 font-semibold text-primary"
-                       onClick={() => navigate(`/path/${path.id}/edit`)}
-                     >
-                       <PenSquare className="h-4 w-4 mr-2" />
-                       Edit
-                     </Button>
+                      <Button
+                        variant="secondary"
+                        className="flex-1 font-semibold text-primary"
+                        onClick={() => navigate(`/path/${path.id}/edit`)}
+                      >
+                        <PenSquare className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
 
-                     <AlertDialog>
-                       <AlertDialogTrigger asChild>
-                         <Button variant="destructive" className="flex-1">
-                           <Trash2 className="h-4 w-4 mr-2" />
-                           Delete
-                         </Button>
-                       </AlertDialogTrigger>
-                       <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Path?</AlertDialogTitle>
-                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                          </AlertDialogFooter>
-                       </AlertDialogContent>
-                     </AlertDialog>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" className="flex-1">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                           <AlertDialogHeader>
+                             <AlertDialogTitle>Delete Path?</AlertDialogTitle>
+                             <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                           </AlertDialogHeader>
+                           <AlertDialogFooter>
+                             <AlertDialogCancel>Cancel</AlertDialogCancel>
+                             <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                           </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                   </div>
                 )}
               </div>

@@ -1,10 +1,12 @@
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { mockLearningPaths, mockUsers } from "@/data/mockData";
 import { PathCard } from "@/components/shared/PathCard";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { pathService, CreatorProfileData } from "@/lib/pathService"; // Import Real Service
 import {
   Star,
   Users,
@@ -15,56 +17,85 @@ import {
 } from "lucide-react";
 
 export default function CreatorDashboard() {
-  const { creatorId } = useParams();
+  // 1. Handle both 'id' and 'creatorId' depending on how your Router is named
+  const params = useParams();
+  const creatorId = params.creatorId || params.id; 
+  
   const navigate = useNavigate();
 
-  const creator = mockUsers.find((u) => u.id === creatorId);
-  const createdPaths = mockLearningPaths.filter(
-    (p) => p.creator?.id === creatorId
-  );
+  // 2. State for Real Data
+  const [data, setData] = useState<CreatorProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  if (!creator) {
+  // 3. Fetch Data from Django Backend
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!creatorId) return;
+      try {
+        const result = await pathService.getCreatorProfile(creatorId);
+        setData(result);
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+        setError("Failed to load creator profile.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [creatorId]);
+
+  // 4. Loading State
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex h-[60vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // 5. Error / Not Found State
+  if (error || !data) {
     return (
       <MainLayout>
         <div className="container py-16 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-4">Creator not found</h1>
+          <p className="text-muted-foreground mb-6">
+             We couldn't find the creator with ID: {creatorId}
+          </p>
           <Button onClick={() => navigate("/browse")}>Browse Paths</Button>
         </div>
       </MainLayout>
     );
   }
 
-  // Calculate stats
-  const totalEnrollments = createdPaths.reduce(
-    (sum, p) => sum + p.enrollmentCount,
-    0
-  );
-  const averageRating =
-    createdPaths.length > 0
-      ? createdPaths.reduce((sum, p) => sum + p.averageRating, 0) /
-        createdPaths.length
-      : 0;
-  const totalSteps = createdPaths.reduce((sum, p) => sum + p.steps.length, 0);
+  // 6. Extract Data for UI
+  const { profile, stats: apiStats, paths } = data;
 
-  const stats = [
+  const statsDisplay = [
     {
       label: "Paths Created",
-      value: createdPaths.length,
+      value: apiStats.total_paths,
       icon: BookOpen,
     },
     {
       label: "Total Learners",
-      value: totalEnrollments.toLocaleString(),
+      value: apiStats.total_students.toLocaleString(),
       icon: Users,
     },
     {
       label: "Average Rating",
-      value: averageRating.toFixed(1),
+      value: apiStats.average_rating.toFixed(1),
       icon: Star,
     },
+    // Note: Total steps isn't in the API summary yet, so we can calculate it or omit it
     {
-      label: "Total Steps",
-      value: totalSteps,
+      label: "Paths Published",
+      value: paths.length,
       icon: TrendingUp,
     },
   ];
@@ -72,12 +103,12 @@ export default function CreatorDashboard() {
   return (
     <MainLayout>
       {/* Header Section */}
-      <section className="bg-gradient-dark text-primary-foreground">
+      <section className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
         <div className="container py-8 md:py-12">
           <Button
             variant="ghost"
             size="sm"
-            className="mb-6 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+            className="mb-6 text-white/70 hover:text-white hover:bg-white/10"
             onClick={() => navigate(-1)}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -85,30 +116,31 @@ export default function CreatorDashboard() {
           </Button>
 
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-            <Avatar className="h-24 w-24 border-4 border-primary-foreground/20">
-              <AvatarImage src={creator.avatar} />
-              <AvatarFallback className="text-2xl">
-                {creator.fullName?.charAt(0)}
+            <Avatar className="h-24 w-24 border-4 border-white/20">
+              {/* Use the API avatar URL */}
+              <AvatarImage src={profile.avatar || undefined} className="object-cover" />
+              <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                {profile.username?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
 
             <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-display font-bold mb-2">
-                {creator.fullName}
+                {profile.full_name || profile.username}
               </h1>
-              <p className="text-primary-foreground/70 mb-3">
-                @{creator.username}
+              <p className="text-white/70 mb-3">
+                @{profile.username}
               </p>
-              {creator.bio && (
-                <p className="text-primary-foreground/80 max-w-2xl">
-                  {creator.bio}
-                </p>
-              )}
-              <div className="flex items-center gap-2 mt-4 text-sm text-primary-foreground/60">
+              
+              <p className="text-white/80 max-w-2xl">
+                {profile.bio || "No bio provided."}
+              </p>
+             
+              <div className="flex items-center gap-2 mt-4 text-sm text-white/60">
                 <Calendar className="h-4 w-4" />
                 <span>
                   Joined{" "}
-                  {new Date(creator.createdAt).toLocaleDateString("en-US", {
+                  {new Date(profile.date_joined).toLocaleDateString("en-US", {
                     month: "long",
                     year: "numeric",
                   })}
@@ -122,7 +154,7 @@ export default function CreatorDashboard() {
       {/* Stats Section */}
       <section className="container py-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {stats.map((stat) => (
+          {statsDisplay.map((stat) => (
             <Card key={stat.label} className="bg-card border-border/50">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
@@ -147,12 +179,12 @@ export default function CreatorDashboard() {
       {/* Created Paths Section */}
       <section className="container py-8">
         <h2 className="text-2xl font-display font-bold mb-6">
-          Learning Paths by {creator.fullName}
+          Learning Paths by {profile.full_name || profile.username}
         </h2>
 
-        {createdPaths.length > 0 ? (
+        {paths.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {createdPaths.map((path) => (
+            {paths.map((path) => (
               <PathCard key={path.id} path={path} />
             ))}
           </div>
