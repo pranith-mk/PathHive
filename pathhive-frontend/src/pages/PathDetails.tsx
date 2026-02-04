@@ -8,12 +8,23 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { ReportDialog } from "@/components/reports/ReportDialog";
-
-// 1. REMOVED EditPathDialog import (we don't need the modal anymore)
 import { RatingDialog } from "@/components/ratings/RatingDialog"; 
 import { useToast } from "@/hooks/use-toast";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ReviewsList } from "@/components/ratings/ReviewList";
+
+// 1. NEW IMPORTS FOR ALERT DIALOG
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 import {
   Star,
@@ -96,9 +107,9 @@ export default function PathDetails() {
 
   // --- ACTIONS ---
 
-  const handleDeletePath = async () => {
+  // 2. UPDATED DELETE HANDLER (No window.confirm here)
+  const handleConfirmDelete = async () => {
     if (!path) return;
-    if (!window.confirm("Are you sure? This action cannot be undone.")) return;
     
     try {
       await pathService.deletePathCreator(path.id);
@@ -314,7 +325,6 @@ export default function PathDetails() {
                   {/* --- OWNER CONTROLS --- */}
                   {isOwner ? (
                     <>
-                      {/* 2. UPDATED: Navigate to Editor instead of opening Dialog */}
                       <Button 
                         variant="secondary" 
                         className="flex-1 font-semibold text-primary"
@@ -324,9 +334,34 @@ export default function PathDetails() {
                         Edit
                       </Button>
                       
-                      <Button variant="destructive" size="icon" onClick={handleDeletePath}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {/* 3. REPLACED DELETE BUTTON WITH ALERT DIALOG */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="icon">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the learning path 
+                              <span className="font-semibold text-foreground"> "{path.title}" </span>
+                              and remove all associated steps and resources.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleConfirmDelete} 
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete Path
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
                     </>
                   ) : (
                     /* --- STUDENT CONTROLS --- */
