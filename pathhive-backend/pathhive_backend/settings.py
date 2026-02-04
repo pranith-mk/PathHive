@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'users',
     'paths',
+    'notifications',
 ]
 
 MIDDLEWARE = [
