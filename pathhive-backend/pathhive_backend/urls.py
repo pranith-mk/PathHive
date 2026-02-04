@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from paths.views import ReportViewSet, admin_stats ,PathAdminViewSet 
+from paths.views import ReportViewSet, admin_stats ,PathAdminViewSet , ReviewViewSet
 from users.views import UserAdminViewSet
 
 
@@ -10,6 +10,7 @@ router = DefaultRouter()
 router.register(r'reports', ReportViewSet, basename='reports')
 router.register(r'admin/users', UserAdminViewSet, basename='admin-users')
 router.register(r'admin/paths', PathAdminViewSet, basename='admin-paths')
+router.register(r'reviews', ReviewViewSet, basename='reviews')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

@@ -4,16 +4,20 @@ from rest_framework.decorators import action
 from rest_framework.response import Response 
 from .models import LearningPath, Tag, Enrollment
 from .models import PathStep, Comment
-from .models import Report
+from .models import Report , Review
 from .serializers import ReportSerializer
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
+from django.db import IntegrityError 
+from rest_framework.exceptions import ValidationError 
+from .permissions import IsOwnerOrReadOnly
 
 from .serializers import (
     LearningPathListSerializer, 
     LearningPathDetailSerializer, 
     LearningPathCreateSerializer,  
-    CommentSerializer
+    CommentSerializer,
+    ReviewSerializer
 )
 
 class LearningPathViewSet(viewsets.ModelViewSet):
@@ -230,3 +234,37 @@ class PathAdminViewSet(viewsets.ModelViewSet):
     # Enable Searching
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'description']
+
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+    # UPDATE PERMISSIONS: Users can read anything, but only owners can edit
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+    def get_queryset(self):
+        queryset = Review.objects.all()
+        path_id = self.request.query_params.get('path_id')
+        if path_id:
+            queryset = queryset.filter(path_id=path_id)
+        return queryset
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save(user=self.request.user)
+        except IntegrityError:
+            raise ValidationError({"detail": "You have already reviewed this path."})
+
+    # NEW ACTION: Get the current user's review for a specific path
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        path_id = request.query_params.get('path_id')
+        if not path_id:
+            return Response({"detail": "Path ID required"}, status=400)
+            
+        try:
+            review = Review.objects.get(path_id=path_id, user=request.user)
+            serializer = self.get_serializer(review)
+            return Response(serializer.data)
+        except Review.DoesNotExist:
+            return Response(None) # Return null if no review found

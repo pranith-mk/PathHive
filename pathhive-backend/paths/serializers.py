@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import LearningPath, PathStep, Resource, Tag, Comment , Enrollment , Report
+from .models import LearningPath, PathStep, Resource, Tag, Comment , Enrollment , Report , Review
 from users.serializers import UserSerializer
 
 # --- BASIC SERIALIZERS ---
@@ -21,6 +21,14 @@ class PathStepSerializer(serializers.ModelSerializer):
         model = PathStep
         fields = ['id', 'title', 'description', 'position', 'resources']
 
+class ReviewSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True) # Show user details (name/avatar)
+    
+    class Meta:
+        model = Review
+        fields = ['id', 'user', 'rating', 'comment', 'created_at']
+        read_only_fields = ['created_at']
+
 # --- READ SERIALIZERS (For viewing data) ---
 
 class LearningPathListSerializer(serializers.ModelSerializer):
@@ -28,10 +36,13 @@ class LearningPathListSerializer(serializers.ModelSerializer):
     creator = UserSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     enrollmentCount = serializers.IntegerField(source='enrollments.count', read_only=True)
+
+    average_rating = serializers.FloatField(read_only=True)
+    review_count = serializers.IntegerField(read_only=True)
     
     class Meta:
         model = LearningPath
-        fields = ['id', 'title', 'difficulty', 'creator', 'tags', 'created_at', 'description', 'is_published','enrollmentCount']
+        fields = ['id', 'title', 'difficulty', 'creator', 'tags', 'created_at', 'description', 'is_published','enrollmentCount','average_rating', 'review_count']
 
 
 
@@ -44,9 +55,12 @@ class LearningPathDetailSerializer(serializers.ModelSerializer):
     completed_steps = serializers.SerializerMethodField()
     comments_count = serializers.IntegerField(source='comments.count', read_only=True)
 
+    average_rating = serializers.FloatField(read_only=True)
+    review_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = LearningPath
-        fields = ['id', 'title', 'description', 'difficulty', 'creator', 'tags', 'steps', 'created_at', 'is_published', 'is_enrolled','completed_steps','comments_count']
+        fields = ['id', 'title', 'description', 'difficulty', 'creator', 'tags', 'steps', 'created_at', 'is_published', 'is_enrolled','completed_steps','comments_count','average_rating', 'review_count']
 
     def get_is_enrolled(self, obj):
         # Check the 'request' context to see who is asking
@@ -137,3 +151,12 @@ class ReportSerializer(serializers.ModelSerializer):
         model = Report
         fields = ['id', 'reporter_name', 'report_type', 'target_id', 'reason', 'created_at', 'is_resolved']
         read_only_fields = ['reporter', 'created_at', 'is_resolved']
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True) # Show user details with the review
+    
+    class Meta:
+        model = Review
+        fields = ['id', 'user','path','rating', 'comment', 'created_at']
+        read_only_fields = ['created_at']

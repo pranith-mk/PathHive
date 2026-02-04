@@ -30,7 +30,7 @@ export interface Path {
   description: string;
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   creator: User;
-  tags: Tag[]; // <--- Now TypeScript knows what "Tag" is!
+  tags: Tag[]; 
   is_published: boolean;
   created_at: string;
   steps?: Step[];
@@ -38,6 +38,8 @@ export interface Path {
   completed_steps?: string[];
   comments_count?: number;
   enrollmentCount?: number;
+  average_rating?: number;
+  review_count?: number;
 }
 
 // 5. Payload for creating a path
@@ -105,4 +107,12 @@ export interface AdminStats {
   total_paths: number;
   total_comments: number;
   pending_reports: number;
+}
+
+export interface Review {
+  id: number;
+  user: User; // This uses your existing User type
+  rating: number;
+  comment: string;
+  created_at: string;
 }

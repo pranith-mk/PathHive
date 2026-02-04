@@ -8,10 +8,13 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { ReportDialog } from "@/components/reports/ReportDialog";
-import { RatingDialog } from "@/components/ratings/RatingDialog";
+
+import { RatingDialog } from "@/components/ratings/RatingDialog"; 
 import { useToast } from "@/hooks/use-toast";
-// 1. Import the Comments Component
 import { CommentsSection } from "@/components/comments/CommentsSection";
+
+import { ReviewsList } from "@/components/ratings/ReviewList";
+
 import {
   Star,
   Users,
@@ -32,7 +35,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Import Service and Types
 import { pathService } from "@/lib/pathService";
 import { Path } from "@/types/api";
 
@@ -48,8 +50,7 @@ const resourceTypeIcons: Record<string, any> = {
 export default function PathDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  // 1. UPDATE: Get 'user' from useAuth
-  const { isAuthenticated, user } = useAuth(); 
+  const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   
   const [path, setPath] = useState<Path | null>(null);
@@ -59,6 +60,9 @@ export default function PathDetails() {
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
+
+  // 2. STATE TO TRIGGER REFRESH
+  const [refreshReviews, setRefreshReviews] = useState(0);
 
   // Fetch Data
   useEffect(() => {
@@ -201,10 +205,17 @@ export default function PathDetails() {
               </p>
 
               <div className="flex flex-wrap gap-6 text-sm text-white/70">
-                <span className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                  New
-                </span>
+                {path.average_rating ? (
+                  <span className="flex items-center gap-2">
+                    <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                    {path.average_rating} ({path.review_count} reviews)
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Star className="h-4 w-4 text-yellow-400" />
+                    New
+                  </span>
+                )}
                 <span className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4" />
                   {steps.length} steps
@@ -296,17 +307,21 @@ export default function PathDetails() {
                   <Button variant="outline" className="flex-1">
                     <Share2 className="h-4 w-4" />
                   </Button>
+                  
+                  {/* 3. UPDATED RATING DIALOG */}
                   <RatingDialog
                     pathId={path.id}
                     pathTitle={path.title}
                     isAuthenticated={isAuthenticated}
                     onAuthRequired={() => navigate("/login")}
+                    onSuccess={() => setRefreshReviews(prev => prev + 1)} // <--- Refresh Trigger
                     trigger={
                       <Button variant="outline" className="flex-1">
                         <Star className="h-4 w-4" />
                       </Button>
                     }
                   />
+
                   <ReportDialog
                     reportType="path"
                     targetId={path.id}
@@ -331,9 +346,12 @@ export default function PathDetails() {
         <Tabs defaultValue="curriculum" className="space-y-6">
           <TabsList>
             <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
-            {/* 2. Enable Comments Tab */}
             <TabsTrigger value="comments">
                 Comments {path.comments_count !== undefined && `(${path.comments_count})`}
+            </TabsTrigger>
+            {/* 4. NEW REVIEWS TRIGGER */}
+            <TabsTrigger value="reviews">
+                Reviews {path.review_count !== undefined && `(${path.review_count})`}
             </TabsTrigger>
           </TabsList>
 
@@ -418,15 +436,23 @@ export default function PathDetails() {
             )}
           </TabsContent>
 
-          {/* 3. Render Comments Section with CURRENT USER */}
           <TabsContent value="comments">
             <CommentsSection 
                 pathId={path.id} 
                 isAuthenticated={isAuthenticated}
-                currentUser={user} // <--- Added currentUser prop here
+                currentUser={user}
                 onNavigateToLogin={() => navigate("/login")} 
             />
           </TabsContent>
+
+          {/* 5. NEW REVIEWS TAB CONTENT */}
+          <TabsContent value="reviews">
+            <ReviewsList 
+                pathId={path.id} 
+                refreshTrigger={refreshReviews} 
+            />
+          </TabsContent>
+
         </Tabs>
       </section>
     </MainLayout>

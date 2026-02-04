@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,17 +9,20 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Star } from "lucide-react";
+import { Star, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { pathService } from "@/lib/pathService";
+import { Review } from "@/types/api";
 
 interface RatingDialogProps {
   pathId: string;
   pathTitle: string;
   isAuthenticated: boolean;
   onAuthRequired: () => void;
-  currentRating?: number;
   trigger?: React.ReactNode;
+  onSuccess?: () => void;
+  existingReview?: Review | null; // <--- The critical prop
 }
 
 export function RatingDialog({
@@ -27,13 +30,18 @@ export function RatingDialog({
   pathTitle,
   isAuthenticated,
   onAuthRequired,
-  currentRating,
   trigger,
+  onSuccess,
+  existingReview,
 }: RatingDialogProps) {
   const [open, setOpen] = useState(false);
-  const [rating, setRating] = useState(currentRating || 0);
-  const [hoveredRating, setHoveredRating] = useState(0);
+  
+  // State for the form
+  const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
+  
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -44,22 +52,68 @@ export function RatingDialog({
     setOpen(isOpen);
   };
 
-  const handleSubmit = () => {
+  // Reset/Pre-fill state when the dialog opens or existingReview changes
+  useEffect(() => {
+    if (open) {
+      if (existingReview) {
+        setRating(existingReview.rating);
+        setReview(existingReview.comment);
+      } else {
+        setRating(0);
+        setReview("");
+      }
+    }
+  }, [open, existingReview]);
+
+  const handleSubmit = async () => {
     if (rating === 0) {
       toast({
         title: "Please select a rating",
-        description: "You must select at least 1 star to submit your rating.",
+        description: "You must select at least 1 star.",
         variant: "destructive",
       });
       return;
     }
 
-    // Mock submission - would connect to backend
-    toast({
-      title: "Rating submitted!",
-      description: `You rated "${pathTitle}" ${rating} star${rating > 1 ? "s" : ""}.`,
-    });
-    setOpen(false);
+    setIsSubmitting(true);
+    try {
+      if (existingReview) {
+        // --- EDIT MODE (PATCH) ---
+        await pathService.updateReview(existingReview.id, rating, review);
+        toast({
+          title: "Review Updated",
+          description: "Your review has been successfully updated.",
+        });
+      } else {
+        // --- CREATE MODE (POST) ---
+        await pathService.createReview(pathId, rating, review);
+        toast({
+          title: "Rating Submitted",
+          description: `Thank you for rating "${pathTitle}".`,
+        });
+      }
+      
+      setOpen(false);
+      if (onSuccess) onSuccess(); // Trigger parent refresh
+      
+    } catch (error: any) {
+      // Handle "Duplicate" error nicely
+      if (error.response?.data?.detail) {
+         toast({
+            title: "Submission Failed",
+            description: error.response.data.detail,
+            variant: "destructive",
+         });
+      } else {
+         toast({
+            title: "Error",
+            description: "Something went wrong. Please try again.",
+            variant: "destructive",
+         });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const displayRating = hoveredRating || rating;
@@ -76,7 +130,9 @@ export function RatingDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Rate this learning path</DialogTitle>
+          <DialogTitle>
+            {existingReview ? "Edit your review" : "Rate this learning path"}
+          </DialogTitle>
           <DialogDescription>
             Share your experience with "{pathTitle}"
           </DialogDescription>
@@ -93,7 +149,8 @@ export function RatingDialog({
                   onClick={() => setRating(star)}
                   onMouseEnter={() => setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
-                  className="p-1 transition-transform hover:scale-110 focus:outline-none"
+                  disabled={isSubmitting}
+                  className="p-1 transition-transform hover:scale-110 focus:outline-none disabled:opacity-50 disabled:hover:scale-100"
                 >
                   <Star
                     className={cn(
@@ -122,20 +179,28 @@ export function RatingDialog({
               Review (optional)
             </label>
             <Textarea
-              placeholder="Share your thoughts about this learning path..."
+              placeholder="Share your thoughts..."
               value={review}
               onChange={(e) => setReview(e.target.value)}
               rows={4}
+              disabled={isSubmitting}
             />
           </div>
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>
-            Submit Rating
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                </>
+            ) : (
+                existingReview ? "Update Review" : "Submit Rating"
+            )}
           </Button>
         </div>
       </DialogContent>

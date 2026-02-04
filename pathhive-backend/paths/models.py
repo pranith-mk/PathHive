@@ -1,6 +1,7 @@
 from django.db import models
 from users.models import UserAccount
 from django.conf import settings
+from django.db.models import Avg
 import uuid
 
 # Source: 15 (TAG table)
@@ -27,6 +28,17 @@ class LearningPath(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def average_rating(self):
+        reviews = self.reviews.all()
+        if reviews.exists():
+            return round(reviews.aggregate(Avg('rating'))['rating__avg'], 1)
+        return 0
+
+    @property
+    def review_count(self):
+        return self.reviews.count()
 
     def __str__(self):
         return self.title
@@ -109,3 +121,18 @@ class Report(models.Model):
 
     def __str__(self):
         return f"{self.report_type} report by {self.reporter.username}"
+
+
+class Review(models.Model):
+    path = models.ForeignKey(LearningPath, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)]) # 1 to 5 stars
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('path', 'user') # A user can only review a path once
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user} - {self.path.title} ({self.rating})"
