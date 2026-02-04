@@ -9,10 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { ReportDialog } from "@/components/reports/ReportDialog";
 
+// 1. REMOVED EditPathDialog import (we don't need the modal anymore)
 import { RatingDialog } from "@/components/ratings/RatingDialog"; 
 import { useToast } from "@/hooks/use-toast";
 import { CommentsSection } from "@/components/comments/CommentsSection";
-
 import { ReviewsList } from "@/components/ratings/ReviewList";
 
 import {
@@ -32,11 +32,13 @@ import {
   Folder,
   Flag,
   Loader2,
+  PenSquare,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { pathService } from "@/lib/pathService";
-import { Path } from "@/types/api";
+import { Path, Review } from "@/types/api";
 
 const resourceTypeIcons: Record<string, any> = {
   video: Video,
@@ -61,24 +63,25 @@ export default function PathDetails() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
 
-  // 2. STATE TO TRIGGER REFRESH
+  // Reviews & Ratings State
   const [refreshReviews, setRefreshReviews] = useState(0);
+  const [userReview, setUserReview] = useState<Review | null>(null);
 
   // Fetch Data
   useEffect(() => {
-    const fetchPath = async () => {
+    const fetchData = async () => {
       if (!id) return;
       try {
         const data = await pathService.getPathById(id);
         setPath(data);
-        // Sync enrollment status from Backend
-        if (data.is_enrolled) {
-          setIsEnrolled(true);
-        }
+        
+        if (data.is_enrolled) setIsEnrolled(true);
+        if (data.completed_steps) setCompletedSteps(data.completed_steps);
 
-        if (data.completed_steps) {
-          setCompletedSteps(data.completed_steps);
-      }
+        if (isAuthenticated) {
+            const myReview = await pathService.getUserReview(id);
+            setUserReview(myReview);
+        }
 
       } catch (err) {
         console.error("Error fetching path:", err);
@@ -88,49 +91,33 @@ export default function PathDetails() {
       }
     };
 
-    fetchPath();
-  }, [id]);
+    fetchData();
+  }, [id, isAuthenticated, refreshReviews]);
 
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex h-[50vh] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </MainLayout>
-    );
-  }
+  // --- ACTIONS ---
 
-  if (error || !path) {
-    return (
-      <MainLayout>
-        <div className="container py-16 text-center">
-          <h1 className="text-2xl font-bold mb-4">Path not found</h1>
-          <p className="text-muted-foreground mb-6">The path you are looking for does not exist.</p>
-          <Button onClick={() => navigate("/browse")}>Browse Paths</Button>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  const steps = path.steps || [];
-  const progress = steps.length > 0 
-    ? (completedSteps.length / steps.length) * 100 
-    : 0;
+  const handleDeletePath = async () => {
+    if (!path) return;
+    if (!window.confirm("Are you sure? This action cannot be undone.")) return;
+    
+    try {
+      await pathService.deletePathCreator(path.id);
+      toast({ title: "Path deleted successfully" });
+      navigate("/browse");
+    } catch (error) {
+      toast({ title: "Failed to delete", variant: "destructive" });
+    }
+  };
 
   const toggleStepCompletion = async (stepId: string) => {
-    // Optimistic Update
     setCompletedSteps((prev) =>
       prev.includes(stepId)
         ? prev.filter((id) => id !== stepId)
         : [...prev, stepId]
     );
 
-    // Call API in background
     try {
-        if (path?.id) {
-            await pathService.toggleStep(path.id, stepId);
-        }
+        if (path?.id) await pathService.toggleStep(path.id, stepId);
     } catch (error) {
         console.error("Failed to save progress");
     }
@@ -152,21 +139,44 @@ export default function PathDetails() {
     try {
       await pathService.enrollInPath(path.id);
       setIsEnrolled(true);
-      toast({
-        title: "Success!",
-        description: `You have successfully enrolled in ${path.title}.`,
-      });
+      toast({ title: "Success!", description: `You have successfully enrolled in ${path.title}.` });
     } catch (error) {
-      console.error("Enrollment failed:", error);
-      toast({
-        title: "Error",
-        description: "Failed to enroll. Please try again later.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to enroll. Please try again later.", variant: "destructive" });
     } finally {
       setIsEnrolling(false);
     }
   };
+
+  // --- RENDER HELPERS ---
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex h-[50vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !path) {
+    return (
+      <MainLayout>
+        <div className="container py-16 text-center">
+          <h1 className="text-2xl font-bold mb-4">Path not found</h1>
+          <Button onClick={() => navigate("/browse")}>Browse Paths</Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  const steps = path.steps || [];
+  const progress = steps.length > 0 
+    ? (completedSteps.length / steps.length) * 100 
+    : 0;
+
+  // Check Ownership
+  const isOwner = user?.id === path?.creator?.id;
 
   return (
     <MainLayout>
@@ -262,7 +272,7 @@ export default function PathDetails() {
               </div>
             </div>
 
-            {/* Enrollment Card */}
+            {/* Enrollment / Actions Card */}
             <div className="lg:col-span-1">
               <div className="bg-white text-slate-900 rounded-xl p-6 shadow-xl border border-slate-200">
                 {isEnrolled ? (
@@ -301,27 +311,52 @@ export default function PathDetails() {
                 )}
                 
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1">
-                    <Bookmark className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    <Share2 className="h-4 w-4" />
-                  </Button>
+                  {/* --- OWNER CONTROLS --- */}
+                  {isOwner ? (
+                    <>
+                      {/* 2. UPDATED: Navigate to Editor instead of opening Dialog */}
+                      <Button 
+                        variant="secondary" 
+                        className="flex-1 font-semibold text-primary"
+                        onClick={() => navigate(`/path/${path.id}/edit`)}
+                      >
+                        <PenSquare className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                      
+                      <Button variant="destructive" size="icon" onClick={handleDeletePath}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    /* --- STUDENT CONTROLS --- */
+                    <>
+                      <Button variant="outline" className="flex-1">
+                        <Bookmark className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" className="flex-1">
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                   
-                  {/* 3. UPDATED RATING DIALOG */}
+                  {/* --- RATINGS --- */}
                   <RatingDialog
                     pathId={path.id}
                     pathTitle={path.title}
                     isAuthenticated={isAuthenticated}
                     onAuthRequired={() => navigate("/login")}
-                    onSuccess={() => setRefreshReviews(prev => prev + 1)} // <--- Refresh Trigger
+                    onSuccess={() => setRefreshReviews(prev => prev + 1)}
+                    existingReview={userReview} 
                     trigger={
-                      <Button variant="outline" className="flex-1">
-                        <Star className="h-4 w-4" />
+                      <Button variant={userReview ? "secondary" : "outline"} className="flex-1">
+                        <Star className={cn("h-4 w-4", userReview && "fill-primary text-primary")} />
+                        {userReview && <span className="ml-2 text-xs">Edit</span>}
                       </Button>
                     }
                   />
 
+                  {/* --- REPORT --- */}
                   <ReportDialog
                     reportType="path"
                     targetId={path.id}
@@ -349,7 +384,6 @@ export default function PathDetails() {
             <TabsTrigger value="comments">
                 Comments {path.comments_count !== undefined && `(${path.comments_count})`}
             </TabsTrigger>
-            {/* 4. NEW REVIEWS TRIGGER */}
             <TabsTrigger value="reviews">
                 Reviews {path.review_count !== undefined && `(${path.review_count})`}
             </TabsTrigger>
@@ -445,7 +479,6 @@ export default function PathDetails() {
             />
           </TabsContent>
 
-          {/* 5. NEW REVIEWS TAB CONTENT */}
           <TabsContent value="reviews">
             <ReviewsList 
                 pathId={path.id} 

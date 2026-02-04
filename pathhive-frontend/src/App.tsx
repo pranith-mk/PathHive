@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route, useLocation } from "react-router-dom"; // Removed unused BrowserRouter
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AIAssistant, AIAssistantTrigger } from "@/components/ai/AIAssistant";
+import PathEditor from "@/pages/PathEditor";
 import { useState } from "react";
+import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -54,8 +56,7 @@ const App = () => {
               <Route path="/browse" element={<Browse />} />
               <Route path="/path/:id" element={<PathDetails />} />
               
-              {/* Note: In previous steps we linked to /dashboard, 
-                  you might want to point this to Browse temporarily if Dashboard isn't ready */}
+             
               <Route path="/dashboard" element={<Dashboard />} />
               
               
@@ -64,6 +65,9 @@ const App = () => {
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/creator/:creatorId" element={<CreatorDashboard />} />
               <Route path="*" element={<NotFound />} />
+
+              <Route path="/create-path" element={<ProtectedRoute><PathEditor /></ProtectedRoute>} />
+              <Route path="/path/:id/edit" element={<ProtectedRoute><PathEditor /></ProtectedRoute>} />
             </Routes>
             <AIAssistantWrapper />
           

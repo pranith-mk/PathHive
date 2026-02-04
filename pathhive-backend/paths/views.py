@@ -3,7 +3,7 @@ from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action 
 from rest_framework.response import Response 
 from .models import LearningPath, Tag, Enrollment
-from .models import PathStep, Comment
+from .models import PathStep, Comment, Resource
 from .models import Report , Review
 from .serializers import ReportSerializer
 from django.contrib.auth import get_user_model
@@ -17,13 +17,15 @@ from .serializers import (
     LearningPathDetailSerializer, 
     LearningPathCreateSerializer,  
     CommentSerializer,
-    ReviewSerializer
+    ReviewSerializer,
+    PathStepSerializer,
+    ResourceSerializer
 )
 
 class LearningPathViewSet(viewsets.ModelViewSet):
     # We start with 'all' so we don't accidentally block creating drafts
     queryset = LearningPath.objects.all()
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     def get_queryset(self):
         """
@@ -268,3 +270,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         except Review.DoesNotExist:
             return Response(None) # Return null if no review found
+
+
+class PathStepViewSet(viewsets.ModelViewSet):
+    queryset = PathStep.objects.all()
+    serializer_class = PathStepSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+class ResourceViewSet(viewsets.ModelViewSet):
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
