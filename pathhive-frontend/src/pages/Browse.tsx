@@ -11,7 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, SlidersHorizontal, X, BookOpen, Loader2, User } from "lucide-react";
+import { Search, SlidersHorizontal, X, BookOpen, Loader2 } from "lucide-react";
+
+// 1. IMPORT THE NEW CARD COMPONENT
+import { PathCard } from "@/components/shared/PathCard";
 
 // Import Service and Types
 import { pathService } from "@/lib/pathService";
@@ -49,7 +52,6 @@ export default function Browse() {
     const allTags = new Set<string>();
     paths.forEach(path => {
       path.tags.forEach(tag => {
-        // Backend might send object {id, name} or string "React"
         const tagName = typeof tag === 'string' ? tag : (tag as any).name;
         if(tagName) allTags.add(tagName);
       });
@@ -57,7 +59,7 @@ export default function Browse() {
     return Array.from(allTags);
   }, [paths]);
 
-  // 5. Filtering Logic (Adapted for API Data)
+  // 5. Filtering Logic
   const filteredPaths = useMemo(() => {
     let result = [...paths];
 
@@ -85,7 +87,6 @@ export default function Browse() {
 
     // Difficulty
     if (difficulty !== "all") {
-      // Backend stores "Beginner" (Title Case), so we match loosely
       result = result.filter((path) => 
         path.difficulty.toLowerCase() === difficulty.toLowerCase()
       );
@@ -96,8 +97,6 @@ export default function Browse() {
       case "newest":
         result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
-      // Note: "Popular" and "Rating" require backend fields we don't have yet.
-      // We can add them back later.
     }
 
     return result;
@@ -144,7 +143,7 @@ export default function Browse() {
               Discover curated learning journeys created by the community.
             </p>
           </div>
-          <Link to="/create">
+          <Link to="/create-path">
              <Button>+ Create New Path</Button>
           </Link>
         </div>
@@ -193,7 +192,6 @@ export default function Browse() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="newest">Newest</SelectItem>
-                    {/* Add Popular/Rating back when backend supports it */}
                   </SelectContent>
                 </Select>
 
@@ -235,35 +233,8 @@ export default function Browse() {
         {filteredPaths.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPaths.map((path) => (
-              <Link 
-                key={path.id} 
-                to={`/path/${path.id}`}
-                className="group block bg-white border rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300"
-              >
-                {/* Custom Card UI (Replacing PathCard to ensure compatibility) */}
-                <div className="h-32 bg-gradient-to-r from-orange-100 to-orange-50 p-6 flex items-start justify-between">
-                   <Badge variant="secondary" className="bg-white/90">
-                      {path.difficulty}
-                   </Badge>
-                </div>
-                <div className="p-5">
-                   <h3 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-primary transition-colors line-clamp-1">
-                     {path.title}
-                   </h3>
-                   <p className="text-muted-foreground text-sm line-clamp-2 mb-4 h-10">
-                     {path.description || "No description provided."}
-                   </p>
-                   
-                   <div className="flex items-center gap-2 pt-4 border-t">
-                      <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                         <User className="h-3 w-3 text-primary" />
-                      </div>
-                      <span className="text-xs font-medium text-gray-600">
-                        {path.creator?.username || "Anonymous"}
-                      </span>
-                   </div>
-                </div>
-              </Link>
+                // 2. THIS IS THE KEY CHANGE: Use the Component!
+                <PathCard key={path.id} path={path} />
             ))}
           </div>
         ) : (
