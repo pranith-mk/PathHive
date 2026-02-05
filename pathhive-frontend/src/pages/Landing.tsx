@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext"; // 1. Import Auth
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { PathCard } from "@/components/shared/PathCard";
@@ -22,6 +23,7 @@ import { Path } from "@/types/api";
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth(); // 2. Get Auth State
   
   const [featuredPaths, setFeaturedPaths] = useState<Path[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,20 +31,15 @@ export default function Landing() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Only fetch paths now (Removed getAllTags call)
         const allPaths = await pathService.getAllPaths();
-
-        // 1. Filter Published Paths
         const published = allPaths.filter(p => p.is_published);
 
-        // 2. Sort by Rating (Highest First)
+        // Sort by Rating (Highest First)
         const topRated = published.sort((a, b) => 
             (b.average_rating || 0) - (a.average_rating || 0)
         );
 
-        // 3. Take Top 3
         setFeaturedPaths(topRated.slice(0, 3));
-
       } catch (error) {
         console.error("Failed to fetch landing page data", error);
       } finally {
@@ -78,30 +75,20 @@ export default function Landing() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: "0.2s" }}>
-              <Button variant="hero" size="xl" onClick={() => navigate("/register")}>
-                Start Learning Free
-                <ArrowRight className="h-5 w-5" />
-              </Button>
+              {/* 3. Hide 'Start Learning Free' if logged in */}
+              {!isAuthenticated && (
+                <Button variant="hero" size="xl" onClick={() => navigate("/register")}>
+                  Start Learning Free
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              )}
+              
               <Button variant="outline" size="xl" onClick={() => navigate("/browse")}>
                 Browse Paths
               </Button>
             </div>
 
-            {/* Stats */}
-            <div className="flex flex-wrap justify-center gap-8 mt-16 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-              <div className="text-center">
-                <p className="text-3xl md:text-4xl font-display font-bold text-primary">500+</p>
-                <p className="text-sm text-muted-foreground">Learning Paths</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl md:text-4xl font-display font-bold text-primary">10K+</p>
-                <p className="text-sm text-muted-foreground">Active Learners</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl md:text-4xl font-display font-bold text-primary">95%</p>
-                <p className="text-sm text-muted-foreground">Satisfaction Rate</p>
-              </div>
-            </div>
+            {/* 4. Removed Dummy Stats Section Here */}
           </div>
         </div>
 
@@ -225,14 +212,16 @@ export default function Landing() {
                 Create your free account today.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
-                  variant="hero" 
-                  size="xl" 
-                  onClick={() => navigate("/register")}
-                >
-                  Get Started Free
-                  <ArrowRight className="h-5 w-5" />
-                </Button>
+                {!isAuthenticated && (
+                  <Button 
+                    variant="hero" 
+                    size="xl" 
+                    onClick={() => navigate("/register")}
+                  >
+                    Get Started Free
+                    <ArrowRight className="h-5 w-5" />
+                  </Button>
+                )}
                 <Button 
                   variant="ghost" 
                   size="xl"

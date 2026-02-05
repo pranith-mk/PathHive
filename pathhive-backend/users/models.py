@@ -33,11 +33,13 @@ class UserAccount(AbstractBaseUser):
     full_name = models.CharField(max_length=255)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
     bio = models.TextField(null=True, blank=True)
-    avatar = models.URLField(null=True, blank=True)
+    
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False) # Required for Django admin access
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
 
     objects = UserAccountManager()
 

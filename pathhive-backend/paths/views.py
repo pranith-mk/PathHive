@@ -223,7 +223,6 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 # --- PUBLIC CREATOR PROFILE ---
-
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
 def creator_profile(request, pk):
@@ -240,12 +239,26 @@ def creator_profile(request, pk):
     
     path_serializer = LearningPathListSerializer(paths, many=True, context={'request': request})
     
-    # Safe Helper for Date Fields (Handles mismatched User models)
+    # Safe Helper for Date Fields
     def get_joined_date(user):
         if hasattr(user, 'date_joined'): return user.date_joined
         if hasattr(user, 'created_at'): return user.created_at
         if hasattr(user, 'joined_at'): return user.joined_at
         return None
+
+    # 👇 UPDATED AVATAR LOGIC (Builds Absolute URL) 👇
+    avatar_url = None
+    if hasattr(creator, 'avatar') and creator.avatar:
+        try:
+            # If it's a File/ImageField, use build_absolute_uri to get http://localhost:8000/...
+            if hasattr(creator.avatar, 'url'):
+                avatar_url = request.build_absolute_uri(creator.avatar.url)
+            else:
+                # If it's just a string (e.g. from Google auth), use it directly
+                avatar_url = str(creator.avatar)
+        except Exception as e:
+            # Fallback if building URI fails
+            avatar_url = None
 
     return Response({
         'profile': {
@@ -253,7 +266,7 @@ def creator_profile(request, pk):
             'username': creator.username,
             'full_name': getattr(creator, 'full_name', creator.username),
             'bio': getattr(creator, 'bio', ""),
-            'avatar': creator.avatar.url if hasattr(creator, 'avatar') and creator.avatar else None,
+            'avatar': avatar_url, # 👈 Now contains the full Domain URL
             'date_joined': get_joined_date(creator)
         },
         'stats': {

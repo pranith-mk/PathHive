@@ -1,15 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/types';
-import api from '../lib/api'; // Ensure this path matches where you saved the axios helper
+import api from '@/lib/api'; // Ensure this points to your axios instance
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  isLoading: boolean; // Added this to prevent flickering while checking session
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, fullName: string, username: string) => Promise<boolean>;
   logout: () => void;
+  updateUser: (userData: Partial<User>) => void; // <--- ADDED THIS
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,22 +27,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     id: data.id,
     email: data.email,
     username: data.username,
-    fullName: data.full_name, // Django sends 'full_name', frontend expects 'fullName'
+    fullName: data.full_name, // Django sends 'full_name'
     role: data.role,
     avatar: data.avatar,
+    bio: data.bio, // Ensure your User type has this if you are using it
     isActive: data.is_active,
-    createdAt: new Date(data.created_at || Date.now()), // Handle date string parsing if needed
+    createdAt: new Date(data.created_at || Date.now()),
   });
 
   // 1. Check Session on App Load
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        await api.get('/auth/csrf/'); // Ensure CSRF cookie is set
+        await api.get('/auth/csrf/');
         const { data } = await api.get('/auth/me/');
         setUser(mapUserResponse(data));
       } catch (error) {
-        setUser(null); // Not logged in
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -52,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 2. Login Function
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      await api.get('/auth/csrf/'); // Refresh CSRF token before post
+      await api.get('/auth/csrf/');
       const response = await api.post('/auth/login/', { email, password });
       setUser(mapUserResponse(response.data));
       return true;
@@ -66,17 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, fullName: string, username: string): Promise<boolean> => {
     try {
       await api.get('/auth/csrf/');
-      // Send data matching Django's serializer fields
       const payload = {
         email,
         password,
         username,
-        full_name: fullName, // Map back to snake_case for Django
+        full_name: fullName,
       };
       
       await api.post('/auth/register/', payload);
-      
-      // Auto-login after successful registration
       return await login(email, password);
     } catch (error) {
       console.error('Registration failed:', error);
@@ -91,14 +90,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
-      // Even if API fails, clear local state
       setUser(null);
     }
   };
 
+  // 5. Update User Function (Local State Update)
+  // This allows components (like Settings) to update the UI immediately
+  const updateUser = (userData: Partial<User>) => {
+    setUser((prev) => {
+        if (!prev) return null;
+        return { ...prev, ...userData };
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, isLoading, login, register, logout }}>
-      {/* Do not render children until we check if the user is logged in */}
+    <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, isLoading, login, register, logout, updateUser }}>
       {!isLoading && children}
     </AuthContext.Provider>
   );

@@ -4,6 +4,8 @@ from rest_framework.routers import DefaultRouter
 from paths.views import ReportViewSet, admin_stats ,PathAdminViewSet , ReviewViewSet
 from users.views import UserAdminViewSet
 from notifications.views import NotificationViewSet
+from django.conf import settings               
+from django.conf.urls.static import static
 
 # Create a router for top-level API items (like reports)
 router = DefaultRouter()
@@ -25,3 +27,6 @@ urlpatterns = [
     path('api/admin/stats/', admin_stats),   # This enables /api/admin/stats/
     
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
