@@ -175,9 +175,22 @@ export default function PathEditor() {
 
   // --- SAVE HANDLER (Unified) ---
   const handleSave = async (publishStatus: boolean) => {
+    // 1. Validate Path Title
     if (!title.trim()) {
       toast({ title: "Title required", description: "Please enter a title.", variant: "destructive" });
       return;
+    }
+
+    // 2. ✨ VALIDATION: Check for Empty Step Titles ✨
+    // Prevents "Field Required" errors from backend on updates
+    const invalidStepIndex = steps.findIndex(step => !step.title.trim());
+    if (invalidStepIndex !== -1) {
+       toast({ 
+         title: "Step Title Missing", 
+         description: `Step ${invalidStepIndex + 1} needs a title.`, 
+         variant: "destructive" 
+       });
+       return; // STOP here
     }
 
     setIsSaving(true);
@@ -219,10 +232,6 @@ export default function PathEditor() {
         await pathService.updatePath(id, basicPayload as any);
 
         // B. Sync Steps
-        // Note: This is "Best Effort" sync. 
-        // Ideal world: Backend has a "Bulk Update" endpoint.
-        // Real world: We loop.
-        
         for (const step of steps) {
             const stepPayload = {
                 title: step.title,
@@ -251,11 +260,11 @@ export default function PathEditor() {
                 // (Robust resource diffing requires complex ID tracking)
                 const newResources = step.resources.filter(r => !r.id);
                 for (const res of newResources) {
-                     await pathService.createResource(step.id, {
-                        title: res.title,
-                        url: res.url,
-                        resource_type: res.type
-                    });
+                      await pathService.createResource(step.id, {
+                         title: res.title,
+                         url: res.url,
+                         resource_type: res.type
+                     });
                 }
             }
         }

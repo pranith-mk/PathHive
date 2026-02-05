@@ -107,9 +107,22 @@ export default function CreatePath() {
 
   // --- API Submission ---
   const handleSave = async (publish: boolean) => {
+    // 1. Validate Path Title
     if (!title.trim()) {
       toast({ title: "Title required", description: "Please enter a title.", variant: "destructive" });
       return;
+    }
+
+    // 2. ✨ VALIDATION: Check for Empty Step Titles ✨
+    // This prevents creating "broken" steps that fail validation later
+    const invalidStepIndex = steps.findIndex(step => !step.title.trim());
+    if (invalidStepIndex !== -1) {
+        toast({ 
+            title: "Step Title Missing", 
+            description: `Step ${invalidStepIndex + 1} needs a title.`, 
+            variant: "destructive" 
+        });
+        return; // STOP here
     }
 
     setIsLoading(true);

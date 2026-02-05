@@ -1,0 +1,23 @@
+[33m0b78945[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m gitignore changes
+[33ma7e27e7[m[33m ([m[1;31morigin/main[m[33m)[m broke
+[33ma91f523[m Add option to upload files
+[33m2923371[m added creator dashboard
+[33me5e0f81[m  ui/ux improvements to buttons in pathdetails page
+[33mf7cf5ea[m added leave path option and some ui improvements
+[33m75c6170[m notifications completed
+[33m0570a64[m made some ui changes
+[33m2c1ca27[m Completed delete  path function
+[33mb20e520[m Completed edit path function
+[33mf20bbb8[m Added Rating and Reviews
+[33m371c988[m Completed admin dashboard and report functionality
+[33m1088e12[m Comment Section Completed
+[33m53082ac[m Completed start_learning , mark_step_completed , dashboard features
+[33m028418e[m completed create path, Browse Path, and View path Details functionalities
+[33ma92ecf6[m Authentication Completed
+[33m8b36be0[m Created User and Paths apps
+[33me9bf850[m Add Django backend setup
+[33m692e5ac[m Add .gitignore
+[33m0ea55d2[m Add .gitignore file
+[33mf2b571d[m Add .gitignore file
+[33m908beb3[m Front end completed
+[33m275e5b7[m first commit
