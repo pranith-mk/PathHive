@@ -43,10 +43,12 @@ class LearningPathListSerializer(serializers.ModelSerializer):
 
     average_rating = serializers.FloatField(read_only=True)
     review_count = serializers.IntegerField(read_only=True)
+
+    steps = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     
     class Meta:
         model = LearningPath
-        fields = ['id', 'title', 'difficulty', 'creator', 'tags', 'created_at', 'description', 'is_published','enrollmentCount','average_rating', 'review_count']
+        fields = ['id', 'title', 'difficulty', 'creator', 'tags', 'created_at', 'description', 'is_published','enrollmentCount','average_rating', 'review_count','steps']
 
 class LearningPathDetailSerializer(serializers.ModelSerializer):
     creator = UserSerializer(read_only=True)

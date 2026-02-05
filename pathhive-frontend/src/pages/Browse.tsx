@@ -11,28 +11,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, SlidersHorizontal, X, BookOpen, Loader2 } from "lucide-react";
+import { Search, SlidersHorizontal, X, BookOpen, Loader2, Star } from "lucide-react"; // Added Star icon
 
-// 1. IMPORT THE NEW CARD COMPONENT
 import { PathCard } from "@/components/shared/PathCard";
-
-// Import Service and Types
 import { pathService } from "@/lib/pathService";
 import { Path } from "@/types/api";
 
 export default function Browse() {
-  // 1. State for Real Data
   const [paths, setPaths] = useState<Path[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 2. Filter States
+  // Filters State
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState<string>("all");
+  const [minRating, setMinRating] = useState<string>("all"); // ✨ NEW: Rating State
   const [sortBy, setSortBy] = useState<string>("newest");
   const [showFilters, setShowFilters] = useState(false);
 
-  // 3. Fetch Real Data
   useEffect(() => {
     const fetchPaths = async () => {
       try {
@@ -47,10 +43,9 @@ export default function Browse() {
     fetchPaths();
   }, []);
 
-  // 4. Unique Tags from Real Data
   const availableTags = useMemo(() => {
     const allTags = new Set<string>();
-    paths.forEach(path => {
+    paths.filter(p => p.is_published).forEach(path => {
       path.tags.forEach(tag => {
         const tagName = typeof tag === 'string' ? tag : (tag as any).name;
         if(tagName) allTags.add(tagName);
@@ -59,9 +54,9 @@ export default function Browse() {
     return Array.from(allTags);
   }, [paths]);
 
-  // 5. Filtering Logic
+  // --- Filtering Logic ---
   const filteredPaths = useMemo(() => {
-    let result = [...paths];
+    let result = paths.filter(path => path.is_published);
 
     // Search
     if (searchQuery) {
@@ -92,15 +87,24 @@ export default function Browse() {
       );
     }
 
+    // ✨ NEW: Rating Filter ✨
+    if (minRating !== "all") {
+        const min = parseFloat(minRating);
+        result = result.filter((path) => (path.average_rating || 0) >= min);
+    }
+
     // Sorting
     switch (sortBy) {
       case "newest":
         result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
+      case "rating": // Optional: Add a sort by rating option too
+        result.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
+        break;
     }
 
     return result;
-  }, [paths, searchQuery, selectedTags, difficulty, sortBy]);
+  }, [paths, searchQuery, selectedTags, difficulty, minRating, sortBy]);
 
   const toggleTag = (tagName: string) => {
     setSelectedTags((prev) =>
@@ -114,12 +118,12 @@ export default function Browse() {
     setSearchQuery("");
     setSelectedTags([]);
     setDifficulty("all");
+    setMinRating("all"); // Clear rating
     setSortBy("newest");
   };
 
-  const hasActiveFilters = searchQuery || selectedTags.length > 0 || difficulty !== "all";
+  const hasActiveFilters = searchQuery || selectedTags.length > 0 || difficulty !== "all" || minRating !== "all";
 
-  // 6. Loading View
   if (isLoading) {
     return (
       <MainLayout>
@@ -150,7 +154,6 @@ export default function Browse() {
 
         {/* Search & Filters */}
         <div className="mb-8 space-y-4">
-          {/* Search Bar */}
           <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -170,10 +173,11 @@ export default function Browse() {
             </Button>
           </div>
 
-          {/* Expanded Filters */}
           {showFilters && (
             <div className="bg-gray-50/50 p-4 rounded-lg border space-y-4">
               <div className="flex flex-wrap gap-3 items-center">
+                
+                {/* Difficulty Select */}
                 <Select value={difficulty} onValueChange={setDifficulty}>
                   <SelectTrigger className="w-[140px] bg-white">
                     <SelectValue placeholder="Difficulty" />
@@ -186,12 +190,30 @@ export default function Browse() {
                   </SelectContent>
                 </Select>
 
+                {/* ✨ NEW: Rating Select ✨ */}
+                <Select value={minRating} onValueChange={setMinRating}>
+                  <SelectTrigger className="w-[140px] bg-white">
+                     <div className="flex items-center gap-2">
+                        <Star className="h-3.5 w-3.5 text-muted-foreground" />
+                        <SelectValue placeholder="Rating" />
+                     </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any Rating</SelectItem>
+                    <SelectItem value="4.5">4.5+ Stars</SelectItem>
+                    <SelectItem value="4.0">4.0+ Stars</SelectItem>
+                    <SelectItem value="3.0">3.0+ Stars</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Sort By Select */}
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-[140px] bg-white">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="rating">Highest Rated</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -203,7 +225,6 @@ export default function Browse() {
                 )}
               </div>
 
-              {/* Dynamic Tags from DB */}
               {availableTags.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-2 border-t">
                   <span className="text-sm text-muted-foreground self-center mr-2">Tags:</span>
@@ -233,12 +254,10 @@ export default function Browse() {
         {filteredPaths.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPaths.map((path) => (
-                // 2. THIS IS THE KEY CHANGE: Use the Component!
                 <PathCard key={path.id} path={path} />
             ))}
           </div>
         ) : (
-          /* Empty State */
           <div className="text-center py-16 bg-gray-50 rounded-xl border border-dashed">
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
               <BookOpen className="h-8 w-8 text-muted-foreground" />

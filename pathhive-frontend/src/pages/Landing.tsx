@@ -1,8 +1,8 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { PathCard } from "@/components/shared/PathCard";
-import { mockLearningPaths, mockTags } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 import { 
   Hexagon, 
@@ -13,13 +13,45 @@ import {
   TrendingUp,
   BookOpen,
   MessageSquare,
-  Zap
+  Zap,
+  Loader2 
 } from "lucide-react";
+
+import { pathService } from "@/lib/pathService";
+import { Path } from "@/types/api";
 
 export default function Landing() {
   const navigate = useNavigate();
-  const featuredPaths = mockLearningPaths.slice(0, 3);
-  const popularTags = mockTags.slice(0, 6);
+  
+  const [featuredPaths, setFeaturedPaths] = useState<Path[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Only fetch paths now (Removed getAllTags call)
+        const allPaths = await pathService.getAllPaths();
+
+        // 1. Filter Published Paths
+        const published = allPaths.filter(p => p.is_published);
+
+        // 2. Sort by Rating (Highest First)
+        const topRated = published.sort((a, b) => 
+            (b.average_rating || 0) - (a.average_rating || 0)
+        );
+
+        // 3. Take Top 3
+        setFeaturedPaths(topRated.slice(0, 3));
+
+      } catch (error) {
+        console.error("Failed to fetch landing page data", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <MainLayout>
@@ -29,26 +61,22 @@ export default function Landing() {
         
         <div className="container relative py-20 md:py-32">
           <div className="max-w-3xl mx-auto text-center">
-            {/* Badge */}
             <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm font-medium animate-fade-in">
               <Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" />
               Your Learning Journey Starts Here
             </Badge>
 
-            {/* Headline */}
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-6 animate-slide-up">
               Curate, Learn, and{" "}
               <span className="text-gradient">Share</span>{" "}
               Knowledge Paths
             </h1>
 
-            {/* Subheadline */}
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-slide-up" style={{ animationDelay: "0.1s" }}>
               PathHive helps you follow structured learning journeys created by experts 
               and the community. Stop getting lost in scattered tutorials.
             </p>
 
-            {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: "0.2s" }}>
               <Button variant="hero" size="xl" onClick={() => navigate("/register")}>
                 Start Learning Free
@@ -146,42 +174,16 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Popular Tags */}
-      <section className="py-16">
-        <div className="container">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
-              Explore Topics
-            </h2>
-            <p className="text-muted-foreground">
-              Discover learning paths in your favorite technologies
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-3">
-            {popularTags.map((tag) => (
-              <Badge 
-                key={tag.id}
-                variant="outline"
-                className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                onClick={() => navigate(`/browse?tag=${tag.name}`)}
-              >
-                {tag.name}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Paths */}
-      <section className="py-20 bg-secondary/30">
+      {/* Featured Paths Section (Top Rated) */}
+      <section className="py-20">
         <div className="container">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl md:text-3xl font-display font-bold mb-2">
-                Featured Paths
+                Top Rated Paths
               </h2>
               <p className="text-muted-foreground">
-                Handpicked paths loved by our community
+                Highest rated learning journeys by our community
               </p>
             </div>
             <Button variant="outline" onClick={() => navigate("/browse")}>
@@ -190,16 +192,26 @@ export default function Landing() {
             </Button>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredPaths.map((path) => (
-              <PathCard key={path.id} path={path} />
-            ))}
-          </div>
+          {isLoading ? (
+             <div className="flex h-40 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+             </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredPaths.length > 0 ? featuredPaths.map((path) => (
+                <PathCard key={path.id} path={path} />
+              )) : (
+                <div className="col-span-full text-center py-10 bg-card rounded-xl border border-dashed text-muted-foreground">
+                   No featured paths available right now. Be the first to create one!
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
+      <section className="py-20 bg-secondary/30">
         <div className="container">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-dark p-8 md:p-16 text-center">
             <div className="absolute inset-0 hexagon-pattern opacity-10" />

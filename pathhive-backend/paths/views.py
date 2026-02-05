@@ -21,7 +21,8 @@ from .serializers import (
     ReviewSerializer,
     PathStepSerializer,
     ResourceSerializer,
-    ReportSerializer
+    ReportSerializer,
+    TagSerializer  # Make sure this is imported!
 )
 
 # 1. Get User model once at the top level
@@ -213,6 +214,12 @@ class ResourceViewSet(viewsets.ModelViewSet):
     queryset = Resource.objects.all()
     serializer_class = ResourceSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+
+class TagViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permission_classes = [permissions.AllowAny]
 
 
 # --- PUBLIC CREATOR PROFILE ---

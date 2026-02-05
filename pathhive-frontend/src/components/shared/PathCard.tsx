@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Star, Users, BookOpen } from "lucide-react";
+import { Star, Users, BookOpen, Lock, Globe } from "lucide-react"; // Added Icons
 import { Path } from "@/types/api";
 import { cn } from "@/lib/utils";
 
@@ -11,34 +11,39 @@ interface PathCardProps {
 }
 
 export const PathCard = ({ path }: PathCardProps) => {
-  // Helper to get difficulty badge colors
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty?.toLowerCase()) {
-      case "beginner":
-        return "bg-green-100 text-green-700 hover:bg-green-200";
-      case "intermediate":
-        return "bg-blue-100 text-blue-700 hover:bg-blue-200";
-      case "advanced":
-        return "bg-orange-100 text-orange-700 hover:bg-orange-200";
-      default:
-        return "bg-secondary text-secondary-foreground";
+      case "beginner": return "bg-green-100 text-green-700 hover:bg-green-200";
+      case "intermediate": return "bg-blue-100 text-blue-700 hover:bg-blue-200";
+      case "advanced": return "bg-orange-100 text-orange-700 hover:bg-orange-200";
+      default: return "bg-secondary text-secondary-foreground";
     }
   };
 
   return (
-    <Card className="h-full transition-all hover:shadow-md border rounded-xl overflow-hidden relative group">
-      {/* 1. Main Link Covering the Card (Absolute Overlay) */}
+    <Card className={cn(
+        "h-full transition-all hover:shadow-md border rounded-xl overflow-hidden relative group",
+        !path.is_published && "border-dashed border-2 border-yellow-400 bg-yellow-50/30" // Visual cue for drafts
+    )}>
       <Link to={`/path/${path.id}`} className="absolute inset-0 z-10" />
 
       <CardContent className="p-5 flex flex-col h-full">
         
-        {/* === Header: Difficulty & Rating === */}
-        <div className="flex justify-between items-center mb-3">
-          <Badge 
-            className={cn("font-normal capitalize", getDifficultyColor(path.difficulty))}
-          >
-            {path.difficulty}
-          </Badge>
+        {/* === Header: Status & Difficulty === */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex gap-2">
+            {/* ✨ DRAFT BADGE LOGIC ✨ */}
+            {!path.is_published ? (
+                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-200 flex items-center gap-1">
+                    <Lock className="h-3 w-3" /> Draft
+                </Badge>
+            ) : (
+                <Badge className={cn("font-normal capitalize", getDifficultyColor(path.difficulty))}>
+                    {path.difficulty}
+                </Badge>
+            )}
+          </div>
+
           <div className="flex items-center gap-1.5 text-sm font-medium">
             <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
             {path.average_rating ? path.average_rating.toFixed(1) : "New"}
@@ -50,7 +55,7 @@ export const PathCard = ({ path }: PathCardProps) => {
           {path.title}
         </h3>
         <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-grow">
-          {path.description}
+          {path.description || "No description provided."}
         </p>
 
         {/* === Tags === */}
@@ -62,7 +67,7 @@ export const PathCard = ({ path }: PathCardProps) => {
           ))}
         </div>
 
-        {/* === Footer: Stats & Creator === */}
+        {/* === Footer === */}
         <div className="flex justify-between items-center text-sm text-muted-foreground pt-4 border-t">
           <div className="flex gap-4">
             <span className="flex items-center gap-1.5">
@@ -75,31 +80,21 @@ export const PathCard = ({ path }: PathCardProps) => {
             </span>
           </div>
           
-          {/* 2. Creator Link (Positioned ABOVE the main card link with z-20) */}
           <div className="relative z-20">
             {path.creator ? (
-               <Link 
-                 to={`/creator/${path.creator.id}`}
-                 className="flex items-center gap-2 hover:text-primary transition-colors"
-               >
+               <Link to={`/creator/${path.creator.id}`} className="flex items-center gap-2 hover:text-primary transition-colors">
                  <Avatar className="h-6 w-6">
-                   {/* Attempt to use avatar if available on creator object */}
-                   <AvatarImage src={(path.creator as any).avatar || undefined} />
-                   <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                       {path.creator.username?.charAt(0).toUpperCase() || "U"}
+                   <AvatarImage src={(path.creator as any).avatar} />
+                   <AvatarFallback className="text-[10px]">
+                       {path.creator.username?.charAt(0).toUpperCase()}
                    </AvatarFallback>
                  </Avatar>
-                 <span className="truncate max-w-[100px]">
-                   by {path.creator.username}
+                 <span className="truncate max-w-[80px] text-xs">
+                   {path.creator.username}
                  </span>
                </Link>
             ) : (
-                <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-[10px]">U</AvatarFallback>
-                    </Avatar>
-                    <span>Unknown</span>
-                </div>
+                <span className="text-xs">Unknown</span>
             )}
           </div>
         </div>

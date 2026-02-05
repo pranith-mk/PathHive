@@ -11,14 +11,16 @@ import {
   ArrowRight,
   Loader2,
   Target,
-  Layers
+  Layers,
+  Lock,
+  Globe
 } from "lucide-react";
 
 import { pathService } from "@/lib/pathService";
 import { Path } from "@/types/api";
 
 // 1. IMPORT THE REUSABLE COMPONENT
-import { PathCard } from "@/components/shared/PathCard"; 
+import { PathCard } from "@/components/shared/PathCard"; // Verify this path matches your project structure
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -28,6 +30,10 @@ export default function Dashboard() {
   const [enrolledPaths, setEnrolledPaths] = useState<Path[]>([]);
   const [createdPaths, setCreatedPaths] = useState<Path[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Derived State for Filtering
+  const publishedPaths = createdPaths.filter(p => p.is_published);
+  const draftPaths = createdPaths.filter(p => !p.is_published);
 
   // Fetch Data on Load
   useEffect(() => {
@@ -87,7 +93,7 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <Button variant="default" size="lg" className="shadow-lg shadow-primary/20" onClick={() => navigate("/create")}>
+          <Button variant="default" size="lg" className="shadow-lg shadow-primary/20" onClick={() => navigate("/create-path")}>
             <PlusCircle className="h-4 w-4 mr-2" />
             Create New Path
           </Button>
@@ -145,7 +151,6 @@ export default function Dashboard() {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {enrolledPaths.map((path) => (
-                    // 2. USE PATHCARD (Passing isEnrolled in case your card supports it)
                     <PathCard key={path.id} path={path} />
                   ))}
                 </div>
@@ -164,20 +169,65 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          {/* Created Paths Tab */}
+          {/* Created Paths Tab (UPDATED WITH NESTED TABS) */}
           <TabsContent value="created">
             {createdPaths.length > 0 ? (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h2 className="text-xl font-display font-semibold">Your Created Paths</h2>
                 </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {createdPaths.map((path) => (
-                    // 3. USE PATHCARD
-                    <PathCard key={path.id} path={path} />
-                  ))}
-                </div>
+                {/* ✨ NESTED TABS FOR FILTERING ✨ */}
+                <Tabs defaultValue="all" className="w-full">
+                    <TabsList className="w-full sm:w-auto grid grid-cols-3 bg-secondary/30">
+                        <TabsTrigger value="all">All ({createdPaths.length})</TabsTrigger>
+                        <TabsTrigger value="published" className="gap-2">
+                             <Globe className="h-3 w-3" /> Published ({publishedPaths.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="drafts" className="gap-2">
+                             <Lock className="h-3 w-3" /> Drafts ({draftPaths.length})
+                        </TabsTrigger>
+                    </TabsList>
+
+                    {/* All Paths */}
+                    <TabsContent value="all" className="mt-6">
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {createdPaths.map((path) => (
+                            <PathCard key={path.id} path={path} />
+                        ))}
+                        </div>
+                    </TabsContent>
+
+                    {/* Published Paths */}
+                    <TabsContent value="published" className="mt-6">
+                        {publishedPaths.length > 0 ? (
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {publishedPaths.map((path) => (
+                                    <PathCard key={path.id} path={path} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-10 text-muted-foreground">
+                                No published paths found.
+                            </div>
+                        )}
+                    </TabsContent>
+
+                    {/* Draft Paths */}
+                    <TabsContent value="drafts" className="mt-6">
+                        {draftPaths.length > 0 ? (
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {draftPaths.map((path) => (
+                                    <PathCard key={path.id} path={path} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-10 text-muted-foreground">
+                                No drafts found.
+                            </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
               </div>
             ) : (
               <div className="text-center py-16 bg-muted/30 rounded-xl border border-dashed">
@@ -186,7 +236,7 @@ export default function Dashboard() {
                 <p className="text-muted-foreground mb-4">
                   Share your knowledge by creating a learning path
                 </p>
-                <Button variant="default" onClick={() => navigate("/create")}>
+                <Button variant="default" onClick={() => navigate("/create-path")}>
                   Create Your First Path
                 </Button>
               </div>
