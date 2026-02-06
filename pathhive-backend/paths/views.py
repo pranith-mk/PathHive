@@ -67,7 +67,7 @@ class LearningPathViewSet(viewsets.ModelViewSet):
             return Response({'status': 'enrolled'}, status=status.HTTP_201_CREATED)
         return Response({'status': 'already_enrolled'}, status=status.HTTP_200_OK)
     
-    @action(detail=True, methods=['post'], url_path='toggle-step/(?P<step_id>[^/.]+)')
+    @action(detail=True, methods=['post'], url_path='toggle-step/(?P<step_id>[^/.]+)',permission_classes=[permissions.IsAuthenticated])
     def toggle_step(self, request, pk=None, step_id=None):
         path = self.get_object()
         step = get_object_or_404(PathStep, pk=step_id, path=path)
@@ -294,9 +294,13 @@ def creator_profile(request, pk):
 
 # 1. Configure Gemini
 # Configure Gemini
+# ... existing imports ...
+
+
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.AllowAny]) # 👈 2. Change this to AllowAny
 def ai_tutor_chat(request):
     user_message = request.data.get('message')
     path_id = request.data.get('path_id')
@@ -304,12 +308,18 @@ def ai_tutor_chat(request):
     if not user_message:
         return Response({'error': 'Message is required'}, status=400)
 
-    # 1. Initialize Context
+    # 3. Handle Guest Logic
+    if request.user.is_authenticated:
+        student_name = request.user.username
+    else:
+        student_name = "Guest Student"
+
+    # Initialize Context
     path = None
     curriculum_text = ""
-    user_progress_text = ""
+    user_progress_text = "Progress tracking is not available for guests."
     
-    # 2. Try to get Path Context
+    # 4. Try to get Path Context
     if path_id:
         try:
             path = LearningPath.objects.get(pk=path_id)
@@ -317,36 +327,38 @@ def ai_tutor_chat(request):
             # Get Curriculum
             steps = path.steps.all().order_by('position')
             for step in steps:
-                curriculum_text += f"- Step {step.position}: {step.title} ({step.description[:100]}...)\n"
+                curriculum_text += f"- Step {step.position + 1}: {step.title} ({step.description[:80]}...)\n"
 
-            # Get Progress
-            enrollment = Enrollment.objects.filter(student=request.user, learning_path=path).first()
-            if enrollment:
-                completed_count = enrollment.completed_steps.count()
-                total_count = steps.count()
-                user_progress_text = f"Student has completed {completed_count}/{total_count} steps."
+            # Get Progress (ONLY if logged in)
+            if request.user.is_authenticated:
+                enrollment = Enrollment.objects.filter(student=request.user, learning_path=path).first()
+                if enrollment:
+                    completed_count = enrollment.completed_steps.count()
+                    total_count = steps.count()
+                    user_progress_text = f"Student has completed {completed_count}/{total_count} steps."
         except LearningPath.DoesNotExist:
             pass 
 
-    # 3. Build Persona
+    # 5. Build Persona
     if path:
         system_instruction = (
             f"You are 'HiveMind', a tutor for the path: '{path.title}'.\n"
-            f"Curriculum: {curriculum_text}\n"
+            f"Student Name: {student_name}\n"
+            f"Curriculum:\n{curriculum_text}\n"
             f"Student Progress: {user_progress_text}\n"
             "Keep answers concise and relevant to this path."
         )
     else:
         system_instruction = (
             f"You are 'HiveMind', a helpful programming tutor.\n"
-            f"The student, {request.user.username}, is asking a general question.\n"
+            f"The student, {student_name}, is asking a general question.\n"
             "Answer concisely and helpfully."
         )
 
-    # 4. Generate Content (NEW SYNTAX)
+    # 6. Generate Content
     try:
         response = client.models.generate_content(
-            model="gemini-3-flash-preview", # 👈 Using the latest stable model
+            model="gemini-3-flash-preview", 
             contents=f"{system_instruction}\n\nStudent: {user_message}",
         )
         return Response({'reply': response.text})

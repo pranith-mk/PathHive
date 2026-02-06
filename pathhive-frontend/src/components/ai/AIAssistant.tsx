@@ -17,7 +17,6 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 
-// 👇 Markdown and Syntax Highlighting Imports
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -41,7 +40,8 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
     {
       id: "1",
       role: "assistant",
-      content: "Hi! I'm your AI learning assistant. I can answer questions about this specific path or help you debug code. What's on your mind?",
+      // 👇 UPDATED: New Welcome Message
+      content: "Hello! I'm HiveMind, your personal learning companion. Need help with this path or stuck on a concept? Just ask!",
       timestamp: new Date(),
     },
   ]);
@@ -103,36 +103,27 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
   return (
     <div 
       className={cn(
-        "fixed bottom-4 right-4 z-50 bg-card border rounded-2xl shadow-elevated overflow-hidden transition-all duration-300",
-        isMinimized ? "w-64 h-14" : "w-80 md:w-96 h-[500px] max-h-[80vh]"
+        "fixed bottom-4 right-4 z-50 bg-card border rounded-2xl shadow-xl overflow-hidden transition-all duration-300 flex flex-col",
+        isMinimized ? "w-64 h-14" : "w-[400px] md:w-[500px] h-[600px] max-h-[80vh]"
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-primary text-primary-foreground">
+      <div className="flex items-center justify-between p-4 border-b bg-primary text-primary-foreground shrink-0">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
             <Sparkles className="h-4 w-4 text-white" />
           </div>
           <div>
-            <span className="font-semibold block leading-tight">AI Tutor</span>
+            {/* 👇 UPDATED: New Title */}
+            <span className="font-semibold block leading-tight">HiveMind AI</span>
             {isTyping && <span className="text-xs opacity-80">Thinking...</span>}
           </div>
         </div>
         <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-white hover:bg-white/20"
-            onClick={() => setIsMinimized(!isMinimized)}
-          >
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => setIsMinimized(!isMinimized)}>
             {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-white hover:bg-white/20"
-            onClick={onClose}
-          >
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -141,7 +132,7 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
       {!isMinimized && (
         <>
           {/* Messages */}
-          <ScrollArea className="flex-1 h-[calc(100%-130px)] bg-slate-50/50 p-4" ref={scrollRef}>
+          <ScrollArea className="flex-1 bg-slate-50/50 p-4" ref={scrollRef}>
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
@@ -158,9 +149,10 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
                   </Avatar>
                   <div
                     className={cn(
-                      "rounded-2xl px-4 py-2.5 max-w-[85%] text-sm shadow-sm transition-all",
+                      "rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-all relative",
+                      "min-w-0 max-w-[90%]", 
                       message.role === "assistant"
-                        ? "bg-white border text-slate-800 rounded-tl-none prose prose-sm prose-slate max-w-none"
+                        ? "bg-white border text-slate-800 rounded-tl-none prose prose-sm prose-slate max-w-none dark:prose-invert"
                         : "bg-primary text-primary-foreground rounded-tr-none"
                     )}
                   >
@@ -171,27 +163,29 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
                           code({ node, inline, className, children, ...props }: any) {
                             const match = /language-(\w+)/.exec(className || '');
                             return !inline && match ? (
-                              <SyntaxHighlighter
-                                style={vscDarkPlus}
-                                language={match[1]}
-                                PreTag="div"
-                                className="rounded-md my-2"
-                                {...props}
-                              >
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
+                              <div className="rounded-md overflow-hidden my-2 w-full">
+                                <SyntaxHighlighter
+                                  style={vscDarkPlus}
+                                  language={match[1]}
+                                  PreTag="div"
+                                  customStyle={{ margin: 0, overflowX: 'auto', padding: '1rem' }}
+                                  {...props}
+                                >
+                                  {String(children).replace(/\n$/, '')}
+                                </SyntaxHighlighter>
+                              </div>
                             ) : (
-                              <code className={cn("bg-slate-100 px-1 rounded text-primary font-semibold", className)} {...props}>
+                              <code className={cn("bg-slate-100 px-1 py-0.5 rounded text-primary font-semibold text-[0.9em]", className)} {...props}>
                                 {children}
                               </code>
                             );
-                          },
+                          }
                         }}
                       >
                         {message.content}
                       </ReactMarkdown>
                     ) : (
-                      message.content
+                      <div className="break-words">{message.content}</div>
                     )}
                   </div>
                 </div>
@@ -217,14 +211,8 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
           </ScrollArea>
 
           {/* Input */}
-          <div className="p-3 border-t bg-white">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSend();
-              }}
-              className="flex gap-2"
-            >
+          <div className="p-3 border-t bg-white shrink-0">
+            <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
               <Input
                 placeholder={pathId ? "Ask about this path..." : "Ask me anything..."}
                 value={input}
