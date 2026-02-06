@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import LearningPath, PathStep, Resource, Tag, Comment , Enrollment , Report , Review
+from .models import LearningPath, PathStep, Resource, Tag, Comment , Enrollment , Report , Review, ChatMessage
 from users.serializers import UserSerializer
 
 # --- BASIC SERIALIZERS ---
@@ -177,3 +177,9 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
         fields = ['id', 'user','path','rating', 'comment', 'created_at']
         read_only_fields = ['created_at']
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = ['id', 'sender', 'message', 'timestamp']

@@ -136,3 +136,15 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.path.title} ({self.rating})"
+
+
+
+class ChatMessage(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_history")
+    learning_path = models.ForeignKey(LearningPath, on_delete=models.CASCADE, null=True, blank=True)
+    sender = models.CharField(max_length=20, choices=[('user', 'User'), ('assistant', 'Assistant')])
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp'] # Oldest first, so it reads like a conversation

@@ -14,6 +14,8 @@ from rest_framework.response import Response
 from rest_framework import permissions, status
 from django.conf import settings
 from .models import LearningPath
+from .models import ChatMessage
+from .serializers import ChatMessageSerializer
 
 from google import genai
 
@@ -298,9 +300,9 @@ def creator_profile(request, pk):
 
 
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
-
+# --- 1. THE CHATBOT VIEW (Handles Guests + History Saving) ---
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny]) # 👈 2. Change this to AllowAny
+@permission_classes([permissions.AllowAny])
 def ai_tutor_chat(request):
     user_message = request.data.get('message')
     path_id = request.data.get('path_id')
@@ -308,61 +310,85 @@ def ai_tutor_chat(request):
     if not user_message:
         return Response({'error': 'Message is required'}, status=400)
 
-    # 3. Handle Guest Logic
-    if request.user.is_authenticated:
-        student_name = request.user.username
-    else:
-        student_name = "Guest Student"
+    # A. Identify User
+    is_authenticated = request.user.is_authenticated
+    student_name = request.user.username if is_authenticated else "Guest Student"
 
-    # Initialize Context
-    path = None
+    # B. Get Context & Save User Message
+    path_obj = None
     curriculum_text = ""
-    user_progress_text = "Progress tracking is not available for guests."
-    
-    # 4. Try to get Path Context
+    user_progress_text = "Progress tracking unavailable for guests."
+
     if path_id:
         try:
-            path = LearningPath.objects.get(pk=path_id)
-            
-            # Get Curriculum
-            steps = path.steps.all().order_by('position')
+            path_obj = LearningPath.objects.get(pk=path_id)
+            # Build Curriculum
+            steps = path_obj.steps.all().order_by('position')
             for step in steps:
-                curriculum_text += f"- Step {step.position + 1}: {step.title} ({step.description[:80]}...)\n"
-
-            # Get Progress (ONLY if logged in)
-            if request.user.is_authenticated:
-                enrollment = Enrollment.objects.filter(student=request.user, learning_path=path).first()
+                curriculum_text += f"- Step {step.position + 1}: {step.title}\n"
+            
+            # Get Progress (Only if logged in)
+            if is_authenticated:
+                enrollment = Enrollment.objects.filter(student=request.user, learning_path=path_obj).first()
                 if enrollment:
-                    completed_count = enrollment.completed_steps.count()
-                    total_count = steps.count()
-                    user_progress_text = f"Student has completed {completed_count}/{total_count} steps."
+                    completed = enrollment.completed_steps.count()
+                    total = steps.count()
+                    user_progress_text = f"Student has completed {completed}/{total} steps."
         except LearningPath.DoesNotExist:
-            pass 
+            pass
 
-    # 5. Build Persona
-    if path:
-        system_instruction = (
-            f"You are 'HiveMind', a tutor for the path: '{path.title}'.\n"
-            f"Student Name: {student_name}\n"
-            f"Curriculum:\n{curriculum_text}\n"
-            f"Student Progress: {user_progress_text}\n"
-            "Keep answers concise and relevant to this path."
-        )
-    else:
-        system_instruction = (
-            f"You are 'HiveMind', a helpful programming tutor.\n"
-            f"The student, {student_name}, is asking a general question.\n"
-            "Answer concisely and helpfully."
+    # SAVE USER MESSAGE (Only if Logged In)
+    if is_authenticated:
+        ChatMessage.objects.create(
+            user=request.user,
+            learning_path=path_obj,
+            sender='user',
+            message=user_message
         )
 
-    # 6. Generate Content
+    # C. Generate AI Response
+    system_instruction = (
+        f"You are 'HiveMind', a tutor for: '{path_obj.title if path_obj else 'General Programming'}'.\n"
+        f"Student: {student_name}\n"
+        f"Context: {curriculum_text[:500]}...\n"
+        f"Progress: {user_progress_text}\n"
+        "Keep answers concise."
+    )
+
     try:
         response = client.models.generate_content(
             model="gemini-3-flash-preview", 
             contents=f"{system_instruction}\n\nStudent: {user_message}",
         )
-        return Response({'reply': response.text})
+        ai_reply = response.text
+
+        # SAVE AI REPLY (Only if Logged In)
+        if is_authenticated:
+            ChatMessage.objects.create(
+                user=request.user,
+                learning_path=path_obj,
+                sender='assistant',
+                message=ai_reply
+            )
+
+        return Response({'reply': ai_reply})
 
     except Exception as e:
         print(f"🔥 GENAI ERROR: {str(e)}")
         return Response({'error': str(e)}, status=503)
+
+
+# --- 2. THE HISTORY VIEW (Fetches Old Messages) ---
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_chat_history(request):
+    path_id = request.query_params.get('path_id')
+    
+    # Filter messages for this user AND this specific path
+    messages = ChatMessage.objects.filter(
+        user=request.user, 
+        learning_path_id=path_id
+    ).order_by('timestamp') # Oldest first
+    
+    serializer = ChatMessageSerializer(messages, many=True)
+    return Response(serializer.data)

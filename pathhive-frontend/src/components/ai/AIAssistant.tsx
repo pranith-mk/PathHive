@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext"; // 👈 Import Auth Context
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -36,25 +37,58 @@ interface AIAssistantProps {
 }
 
 export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      // 👇 UPDATED: New Welcome Message
-      content: "Hello! I'm HiveMind, your personal learning companion. Need help with this path or stuck on a concept? Just ask!",
-      timestamp: new Date(),
-    },
-  ]);
+  const { isAuthenticated } = useAuth(); // 👈 Get auth state
+  
+  // Default Welcome Message
+  const welcomeMessage: Message = {
+    id: "welcome",
+    role: "assistant",
+    content: "Hello! I'm HiveMind, your personal learning companion. Need help with this path or stuck on a concept? Just ask!",
+    timestamp: new Date(),
+  };
+
+  const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // 👇 NEW: Fetch History on Load
+  useEffect(() => {
+    const fetchHistory = async () => {
+      // Only fetch if open, logged in, and we have a pathId
+      if (isOpen && isAuthenticated && pathId) {
+        try {
+          const res = await api.get('/paths/ai-chat/history/', {
+            params: { path_id: pathId }
+          });
+          
+          if (res.data && res.data.length > 0) {
+            // Transform Backend Data -> Frontend Data
+            const history = res.data.map((msg: any) => ({
+              id: msg.id.toString(),
+              role: msg.sender, // 'user' or 'assistant'
+              content: msg.message,
+              timestamp: new Date(msg.timestamp)
+            }));
+            // Replace default message with actual history
+            setMessages(history);
+          }
+        } catch (err) {
+          console.error("Failed to load chat history", err);
+        }
+      }
+    };
+
+    fetchHistory();
+  }, [isOpen, pathId, isAuthenticated]);
+
+  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, isOpen]); // Added isOpen to scroll when opening
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -114,7 +148,6 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
             <Sparkles className="h-4 w-4 text-white" />
           </div>
           <div>
-            {/* 👇 UPDATED: New Title */}
             <span className="font-semibold block leading-tight">HiveMind AI</span>
             {isTyping && <span className="text-xs opacity-80">Thinking...</span>}
           </div>
@@ -228,9 +261,9 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
         </>
       )}
     </div>
-  );
+  
+);
 }
-
 export function AIAssistantTrigger({ onClick }: { onClick: () => void }) {
   return (
     <Button
