@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // 👈 1. Import useLocation
 import {
   BookOpen,
   PlusCircle,
@@ -18,24 +18,24 @@ import {
 
 import { pathService } from "@/lib/pathService";
 import { Path } from "@/types/api";
-
-// 1. IMPORT THE REUSABLE COMPONENT
-import { PathCard } from "@/components/shared/PathCard"; // Verify this path matches your project structure
+import { PathCard } from "@/components/shared/PathCard";
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // 👈 2. Initialize hook
+
+  // 3. Check for the "newUser" flag in the navigation state
+  const isNewUser = location.state?.newUser; 
 
   // State for Real Data
   const [enrolledPaths, setEnrolledPaths] = useState<Path[]>([]);
   const [createdPaths, setCreatedPaths] = useState<Path[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Derived State for Filtering
   const publishedPaths = createdPaths.filter(p => p.is_published);
   const draftPaths = createdPaths.filter(p => !p.is_published);
 
-  // Fetch Data on Load
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate("/login");
@@ -85,11 +85,12 @@ export default function Dashboard() {
               </AvatarFallback>
             </Avatar>
             <div>
+              {/* 👇 4. Conditionally render the Welcome Message */}
               <h1 className="text-2xl md:text-3xl font-display font-bold">
-                Welcome back, {user?.fullName?.split(' ')[0] || user?.username || 'Learner'}!
+                {isNewUser ? 'Welcome to PathHive' : 'Welcome back'}, {user?.fullName?.split(' ')[0] || user?.username || 'Learner'}!
               </h1>
               <p className="text-muted-foreground">
-                Continue your learning journey
+                {isNewUser ? 'Start your learning journey today' : 'Continue your learning journey'}
               </p>
             </div>
           </div>
@@ -101,7 +102,8 @@ export default function Dashboard() {
 
         {/* --- REAL DATA STATS GRID --- */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {/* Stat 1: Joined */}
+            {/* ... (Rest of your component remains exactly the same) ... */}
+            {/* Stat 1: Joined */}
           <div className="bg-card rounded-xl border border-border p-4 md:p-5 hover:shadow-sm transition-shadow">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 rounded-lg text-green-600 bg-green-100">
@@ -137,7 +139,6 @@ export default function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          {/* My Learning Tab */}
           <TabsContent value="learning">
             {enrolledPaths.length > 0 ? (
               <div className="space-y-6">
@@ -169,7 +170,6 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          {/* Created Paths Tab (UPDATED WITH NESTED TABS) */}
           <TabsContent value="created">
             {createdPaths.length > 0 ? (
               <div className="space-y-6">
@@ -177,7 +177,6 @@ export default function Dashboard() {
                   <h2 className="text-xl font-display font-semibold">Your Created Paths</h2>
                 </div>
 
-                {/* ✨ NESTED TABS FOR FILTERING ✨ */}
                 <Tabs defaultValue="all" className="w-full">
                     <TabsList className="w-full sm:w-auto grid grid-cols-3 bg-secondary/30">
                         <TabsTrigger value="all">All ({createdPaths.length})</TabsTrigger>
@@ -189,7 +188,6 @@ export default function Dashboard() {
                         </TabsTrigger>
                     </TabsList>
 
-                    {/* All Paths */}
                     <TabsContent value="all" className="mt-6">
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {createdPaths.map((path) => (
@@ -198,7 +196,6 @@ export default function Dashboard() {
                         </div>
                     </TabsContent>
 
-                    {/* Published Paths */}
                     <TabsContent value="published" className="mt-6">
                         {publishedPaths.length > 0 ? (
                             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -213,7 +210,6 @@ export default function Dashboard() {
                         )}
                     </TabsContent>
 
-                    {/* Draft Paths */}
                     <TabsContent value="drafts" className="mt-6">
                         {draftPaths.length > 0 ? (
                             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
