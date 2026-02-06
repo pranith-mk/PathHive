@@ -11,9 +11,17 @@ import {
   Sparkles,
   Minimize2,
   Maximize2,
-  X
+  X,
+  Loader2 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import api from "@/lib/api";
+
+// 👇 Markdown and Syntax Highlighting Imports
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface Message {
   id: string;
@@ -25,21 +33,15 @@ interface Message {
 interface AIAssistantProps {
   isOpen: boolean;
   onClose: () => void;
+  pathId?: string;
 }
 
-const sampleResponses = [
-  "That's a great question! Based on the current step you're working on, I'd recommend focusing on understanding the fundamentals first before moving to advanced concepts.",
-  "I can help explain that concept! Think of it like building blocks - each piece needs to be in place before adding the next layer.",
-  "Here's a quick summary: The main idea is to break down complex problems into smaller, manageable parts. This makes learning more effective and less overwhelming.",
-  "That's a common challenge many learners face. Try practicing with smaller examples first, then gradually increase complexity.",
-];
-
-export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
+export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       role: "assistant",
-      content: "Hi! I'm your AI learning assistant. How can I help you today? I can answer questions, summarize content, or help you understand concepts better.",
+      content: "Hi! I'm your AI learning assistant. I can answer questions about this specific path or help you debug code. What's on your mind?",
       timestamp: new Date(),
     },
   ]);
@@ -52,9 +54,9 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = {
@@ -68,18 +70,32 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
     setInput("");
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const response = sampleResponses[Math.floor(Math.random() * sampleResponses.length)];
+    try {
+      const response = await api.post('/paths/ai-chat/', {
+        message: userMessage.content,
+        path_id: pathId 
+      });
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: response,
+        content: response.data.reply,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMessage]);
+
+    } catch (error) {
+      console.error("AI Error:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "I'm having trouble connecting to the server right now. Please try again later.",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   if (!isOpen) return null;
@@ -88,22 +104,25 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
     <div 
       className={cn(
         "fixed bottom-4 right-4 z-50 bg-card border rounded-2xl shadow-elevated overflow-hidden transition-all duration-300",
-        isMinimized ? "w-64 h-14" : "w-96 h-[500px] max-h-[80vh]"
+        isMinimized ? "w-64 h-14" : "w-80 md:w-96 h-[500px] max-h-[80vh]"
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-gradient-hero">
-        <div className="flex items-center gap-2 text-primary-foreground">
-          <div className="h-8 w-8 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-            <Sparkles className="h-4 w-4" />
+      <div className="flex items-center justify-between p-4 border-b bg-primary text-primary-foreground">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-white" />
           </div>
-          <span className="font-semibold">AI Assistant</span>
+          <div>
+            <span className="font-semibold block leading-tight">AI Tutor</span>
+            {isTyping && <span className="text-xs opacity-80">Thinking...</span>}
+          </div>
         </div>
         <div className="flex gap-1">
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-primary-foreground hover:bg-primary-foreground/20"
+            className="h-7 w-7 text-white hover:bg-white/20"
             onClick={() => setIsMinimized(!isMinimized)}
           >
             {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
@@ -111,7 +130,7 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-primary-foreground hover:bg-primary-foreground/20"
+            className="h-7 w-7 text-white hover:bg-white/20"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -122,7 +141,7 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
       {!isMinimized && (
         <>
           {/* Messages */}
-          <ScrollArea className="flex-1 h-[calc(100%-130px)] p-4" ref={scrollRef}>
+          <ScrollArea className="flex-1 h-[calc(100%-130px)] bg-slate-50/50 p-4" ref={scrollRef}>
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
@@ -133,19 +152,47 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
                   )}
                 >
                   <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarFallback className={message.role === "assistant" ? "bg-primary/10 text-primary" : "bg-secondary"}>
-                      {message.role === "assistant" ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                    <AvatarFallback className={message.role === "assistant" ? "bg-primary text-primary-foreground" : "bg-slate-200"}>
+                      {message.role === "assistant" ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4 text-slate-600" />}
                     </AvatarFallback>
                   </Avatar>
                   <div
                     className={cn(
-                      "rounded-2xl px-4 py-2.5 max-w-[80%] text-sm",
+                      "rounded-2xl px-4 py-2.5 max-w-[85%] text-sm shadow-sm transition-all",
                       message.role === "assistant"
-                        ? "bg-secondary text-secondary-foreground"
-                        : "bg-primary text-primary-foreground"
+                        ? "bg-white border text-slate-800 rounded-tl-none prose prose-sm prose-slate max-w-none"
+                        : "bg-primary text-primary-foreground rounded-tr-none"
                     )}
                   >
-                    {message.content}
+                    {message.role === "assistant" ? (
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          code({ node, inline, className, children, ...props }: any) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            return !inline && match ? (
+                              <SyntaxHighlighter
+                                style={vscDarkPlus}
+                                language={match[1]}
+                                PreTag="div"
+                                className="rounded-md my-2"
+                                {...props}
+                              >
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                            ) : (
+                              <code className={cn("bg-slate-100 px-1 rounded text-primary font-semibold", className)} {...props}>
+                                {children}
+                              </code>
+                            );
+                          },
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    ) : (
+                      message.content
+                    )}
                   </div>
                 </div>
               ))}
@@ -153,15 +200,15 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
               {isTyping && (
                 <div className="flex gap-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary/10 text-primary">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
                       <Bot className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-secondary rounded-2xl px-4 py-3">
+                  <div className="bg-white border rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
                     <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                     </div>
                   </div>
                 </div>
@@ -170,7 +217,7 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
           </ScrollArea>
 
           {/* Input */}
-          <div className="p-4 border-t">
+          <div className="p-3 border-t bg-white">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -179,13 +226,14 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
               className="flex gap-2"
             >
               <Input
-                placeholder="Ask me anything..."
+                placeholder={pathId ? "Ask about this path..." : "Ask me anything..."}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                className="flex-1"
+                className="flex-1 focus-visible:ring-1"
+                disabled={isTyping}
               />
-              <Button type="submit" size="icon" disabled={!input.trim()}>
-                <Send className="h-4 w-4" />
+              <Button type="submit" size="icon" disabled={!input.trim() || isTyping}>
+                {isTyping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </form>
           </div>
@@ -199,9 +247,7 @@ export function AIAssistantTrigger({ onClick }: { onClick: () => void }) {
   return (
     <Button
       onClick={onClick}
-      variant="hero"
-      size="icon"
-      className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-elevated z-40"
+      className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-xl z-40 bg-primary hover:bg-primary/90 transition-transform hover:scale-105"
     >
       <MessageSquare className="h-6 w-6" />
     </Button>

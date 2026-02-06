@@ -8,6 +8,16 @@ from rest_framework.exceptions import ValidationError
 from django.db.models import Avg
 from .permissions import IsOwnerOrReadOnly
 
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import permissions, status
+from django.conf import settings
+from .models import LearningPath
+
+from google import genai
+
+
 from .models import (
     LearningPath, Tag, Enrollment, PathStep, 
     Comment, Resource, Report, Review
@@ -276,3 +286,71 @@ def creator_profile(request, pk):
         },
         'paths': path_serializer.data
     })
+
+
+
+# Gemini Chatbot integration
+
+
+# 1. Configure Gemini
+# Configure Gemini
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def ai_tutor_chat(request):
+    user_message = request.data.get('message')
+    path_id = request.data.get('path_id')
+    
+    if not user_message:
+        return Response({'error': 'Message is required'}, status=400)
+
+    # 1. Initialize Context
+    path = None
+    curriculum_text = ""
+    user_progress_text = ""
+    
+    # 2. Try to get Path Context
+    if path_id:
+        try:
+            path = LearningPath.objects.get(pk=path_id)
+            
+            # Get Curriculum
+            steps = path.steps.all().order_by('position')
+            for step in steps:
+                curriculum_text += f"- Step {step.position}: {step.title} ({step.description[:100]}...)\n"
+
+            # Get Progress
+            enrollment = Enrollment.objects.filter(student=request.user, learning_path=path).first()
+            if enrollment:
+                completed_count = enrollment.completed_steps.count()
+                total_count = steps.count()
+                user_progress_text = f"Student has completed {completed_count}/{total_count} steps."
+        except LearningPath.DoesNotExist:
+            pass 
+
+    # 3. Build Persona
+    if path:
+        system_instruction = (
+            f"You are 'HiveMind', a tutor for the path: '{path.title}'.\n"
+            f"Curriculum: {curriculum_text}\n"
+            f"Student Progress: {user_progress_text}\n"
+            "Keep answers concise and relevant to this path."
+        )
+    else:
+        system_instruction = (
+            f"You are 'HiveMind', a helpful programming tutor.\n"
+            f"The student, {request.user.username}, is asking a general question.\n"
+            "Answer concisely and helpfully."
+        )
+
+    # 4. Generate Content (NEW SYNTAX)
+    try:
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview", # 👈 Using the latest stable model
+            contents=f"{system_instruction}\n\nStudent: {user_message}",
+        )
+        return Response({'reply': response.text})
+
+    except Exception as e:
+        print(f"🔥 GENAI ERROR: {str(e)}")
+        return Response({'error': str(e)}, status=503)

@@ -2,11 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route, useLocation } from "react-router-dom"; // Removed unused BrowserRouter
+import { Routes, Route } from "react-router-dom"; 
 import { AuthProvider } from "@/contexts/AuthContext";
-import { AIAssistant, AIAssistantTrigger } from "@/components/ai/AIAssistant";
+// 👇 DELETE THESE IMPORTS (We use them in PathDetails.tsx instead)
+// import { AIAssistant, AIAssistantTrigger } from "@/components/ai/AIAssistant";
+// import { useState } from "react"; 
+
 import PathEditor from "@/pages/PathEditor";
-import { useState } from "react";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 
 // Pages
@@ -24,22 +26,8 @@ import Settings from "@/pages/Settings";
 
 const queryClient = new QueryClient();
 
-const AIAssistantWrapper = () => {
-  const [showAI, setShowAI] = useState(false);
-  const location = useLocation();
-  
-  // Hide AI assistant on auth pages
-  const hideOnAuthPages = ['/login', '/register'].includes(location.pathname);
-  
-  if (hideOnAuthPages) return null;
-  
-  return (
-    <>
-      {!showAI && <AIAssistantTrigger onClick={() => setShowAI(true)} />}
-      <AIAssistant isOpen={showAI} onClose={() => setShowAI(false)} />
-    </>
-  );
-};
+// 👇 DELETE THIS ENTIRE WRAPPER COMPONENT
+// const AIAssistantWrapper = () => { ... }
 
 const App = () => {
   return (
@@ -55,12 +43,11 @@ const App = () => {
               <Route path="/register" element={<Register />} />
               
               <Route path="/browse" element={<Browse />} />
+              
+              {/* This route uses :id, which is correct! */}
               <Route path="/path/:id" element={<PathDetails />} />
               
-             
               <Route path="/dashboard" element={<Dashboard />} />
-              
-              
               <Route path="/create" element={<CreatePath />} />
               
               <Route path="/admin" element={<AdminDashboard />} />
@@ -71,10 +58,11 @@ const App = () => {
               <Route path="/path/:id/edit" element={<ProtectedRoute><PathEditor /></ProtectedRoute>} />
 
               <Route path="/settings" element={<Settings />} />
-
               
             </Routes>
-            <AIAssistantWrapper />
+
+            {/* 👇 DELETE THIS LINE */}
+            {/* <AIAssistantWrapper /> */}
           
         </TooltipProvider>
       </AuthProvider>

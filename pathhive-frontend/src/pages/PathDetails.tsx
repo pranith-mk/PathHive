@@ -12,7 +12,7 @@ import { RatingDialog } from "@/components/ratings/RatingDialog";
 import { useToast } from "@/hooks/use-toast";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ReviewsList } from "@/components/ratings/ReviewList";
-
+import { AIAssistant, AIAssistantTrigger } from "@/components/ai/AIAssistant";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +65,8 @@ export default function PathDetails() {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
+
+  const [isAiOpen, setIsAiOpen] = useState(false);
 
   const [path, setPath] = useState<Path | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -638,6 +640,15 @@ export default function PathDetails() {
 
         </Tabs>
       </section>
+      <AIAssistant 
+        isOpen={isAiOpen} 
+        onClose={() => setIsAiOpen(false)} 
+        pathId={id} // 👈 Critical: This connects the AI to the current path's context
+      />
+      
+      {!isAiOpen && (
+        <AIAssistantTrigger onClick={() => setIsAiOpen(true)} />
+      )}
     </MainLayout>
   );
 }

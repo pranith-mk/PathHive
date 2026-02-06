@@ -11,6 +11,7 @@ router.register(r'tags', TagViewSet)
 
 urlpatterns = [
     path('creators/<str:pk>/', views.creator_profile, name='creator-profile'),
+    path('ai-chat/', views.ai_tutor_chat, name='ai-chat'),
     path('', include(router.urls)),
     
 ]
