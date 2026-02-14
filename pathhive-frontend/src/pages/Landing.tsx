@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext"; // 1. Import Auth
+import { useAuth } from "@/contexts/AuthContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { PathCard } from "@/components/shared/PathCard";
@@ -10,11 +10,11 @@ import {
   ArrowRight, 
   Sparkles, 
   Target, 
-  Users, 
+  Share2, 
   TrendingUp,
   BookOpen,
   MessageSquare,
-  Zap,
+  Bot,
   Loader2 
 } from "lucide-react";
 
@@ -23,7 +23,7 @@ import { Path } from "@/types/api";
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth(); // 2. Get Auth State
+  const { isAuthenticated } = useAuth();
   
   const [featuredPaths, setFeaturedPaths] = useState<Path[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,7 +75,6 @@ export default function Landing() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: "0.2s" }}>
-              {/* 3. Hide 'Start Learning Free' if logged in */}
               {!isAuthenticated && (
                 <Button variant="hero" size="xl" onClick={() => navigate("/register")}>
                   Start Learning Free
@@ -87,8 +86,6 @@ export default function Landing() {
                 Browse Paths
               </Button>
             </div>
-
-            {/* 4. Removed Dummy Stats Section Here */}
           </div>
         </div>
 
@@ -109,7 +106,7 @@ export default function Landing() {
               Why Choose PathHive?
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Stop jumping between scattered resources. Follow curated paths designed to take you from beginner to expert.
+              A complete ecosystem designed to take you from beginner to expert, or let you share your own expertise with the world.
             </p>
           </div>
 
@@ -118,32 +115,32 @@ export default function Landing() {
               {
                 icon: Target,
                 title: "Structured Learning",
-                description: "Step-by-step paths that guide you through topics in the right order, reducing confusion and overwhelm."
-              },
-              {
-                icon: Users,
-                title: "Community-Driven",
-                description: "Learn from paths created by experts and fellow learners who've walked the same journey."
-              },
-              {
-                icon: Zap,
-                title: "AI-Powered Assistance",
-                description: "Get instant help with our AI chatbot and summarizer to understand concepts faster."
+                description: "Step-by-step paths that guide you through topics in the right order, eliminating the guesswork of what to learn next."
               },
               {
                 icon: BookOpen,
-                title: "Multi-Format Resources",
-                description: "Access videos, articles, docs, and exercises all in one place, curated for your learning style."
+                title: "Curated Resources",
+                description: "Access the best videos, articles, and documentation from across the web, all neatly organized into actionable steps."
+              },
+              {
+                icon: Bot,
+                title: "AI Chat Assistant",
+                description: "Stuck on a concept? Chat with our integrated AI tutor to get instant clarifications specific to your current learning path."
               },
               {
                 icon: TrendingUp,
-                title: "Progress Tracking",
-                description: "Visualize your learning journey, track completed steps, and celebrate your achievements."
+                title: "Track Your Progress",
+                description: "Mark steps as completed, visualize your overall journey, and pick up exactly where you left off on your dashboard."
+              },
+              {
+                icon: Share2,
+                title: "Become a Creator",
+                description: "Reinforce your own knowledge by curating resources and building structured paths to guide newly-learned users."
               },
               {
                 icon: MessageSquare,
-                title: "Community Interaction",
-                description: "Rate paths, leave comments, and learn alongside a supportive community."
+                title: "Community Feedback",
+                description: "Read reviews, leave ratings, and discuss complex topics in the comments section with fellow learners."
               }
             ].map((feature, index) => (
               <div 
@@ -208,8 +205,7 @@ export default function Landing() {
                 Ready to Start Your Learning Journey?
               </h2>
               <p className="text-primary-foreground/80 mb-8 max-w-xl mx-auto">
-                Join thousands of learners who are mastering new skills with structured paths. 
-                Create your free account today.
+                Join our community to master new skills with structured paths or share your expertise by creating your own.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 {!isAuthenticated && (
@@ -218,7 +214,7 @@ export default function Landing() {
                     size="xl" 
                     onClick={() => navigate("/register")}
                   >
-                    Get Started Free
+                    Create Free Account
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 )}

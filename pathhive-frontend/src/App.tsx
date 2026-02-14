@@ -23,17 +23,18 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import NotFound from "./pages/NotFound";
 import Settings from "@/pages/Settings";
+import ScrollToTop from "@/components/shared/ScrollToTop";
 
 const queryClient = new QueryClient();
 
-// 👇 DELETE THIS ENTIRE WRAPPER COMPONENT
-// const AIAssistantWrapper = () => { ... }
+
 
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
+        <ScrollToTop />
           <Toaster />
           <Sonner />
           
@@ -61,8 +62,7 @@ const App = () => {
               
             </Routes>
 
-            {/* 👇 DELETE THIS LINE */}
-            {/* <AIAssistantWrapper /> */}
+     
           
         </TooltipProvider>
       </AuthProvider>
