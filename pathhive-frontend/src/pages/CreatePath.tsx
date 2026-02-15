@@ -37,7 +37,7 @@ export default function CreatePath() {
   const [description, setDescription] = useState("");
   const [difficulty, setDifficulty] = useState("Beginner");
   const [allowComments, setAllowComments] = useState(true);
-  
+
   // Tags State
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -83,9 +83,9 @@ export default function CreatePath() {
     setSteps(steps.map((s) =>
       s.id === stepId
         ? {
-            ...s,
-            resources: s.resources.map((r, i) => i === resourceIndex ? { ...r, [field]: value } : r),
-          }
+          ...s,
+          resources: s.resources.map((r, i) => i === resourceIndex ? { ...r, [field]: value } : r),
+        }
         : s
     ));
   };
@@ -117,12 +117,12 @@ export default function CreatePath() {
     // This prevents creating "broken" steps that fail validation later
     const invalidStepIndex = steps.findIndex(step => !step.title.trim());
     if (invalidStepIndex !== -1) {
-        toast({ 
-            title: "Step Title Missing", 
-            description: `Step ${invalidStepIndex + 1} needs a title.`, 
-            variant: "destructive" 
-        });
-        return; // STOP here
+      toast({
+        title: "Step Title Missing",
+        description: `Step ${invalidStepIndex + 1} needs a title.`,
+        variant: "destructive"
+      });
+      return; // STOP here
     }
 
     setIsLoading(true);
@@ -153,7 +153,7 @@ export default function CreatePath() {
         title: publish ? "Path Published!" : "Draft Saved!",
         description: "Your learning path has been created.",
       });
-      
+
       navigate("/dashboard");
 
     } catch (error) {
@@ -198,7 +198,7 @@ export default function CreatePath() {
           {/* Basic Info */}
           <section className="bg-card rounded-xl border p-6 space-y-5">
             <h2 className="text-lg font-display font-semibold">Basic Information</h2>
-            
+
             <div>
               <Label htmlFor="title">Path Title *</Label>
               <Input
@@ -248,7 +248,7 @@ export default function CreatePath() {
             {/* Simple Tag Input */}
             <div>
               <Label>Tags (Press Enter to add)</Label>
-              <Input 
+              <Input
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
@@ -324,18 +324,18 @@ export default function CreatePath() {
                         <SelectContent>
                           <SelectItem value="video">Video</SelectItem>
                           <SelectItem value="article">Article</SelectItem>
-                          <SelectItem value="documentation">Docs</SelectItem>
-                          <SelectItem value="project">Project</SelectItem>
+                          <SelectItem value="doc">Docs</SelectItem>
+
                         </SelectContent>
                       </Select>
-                      
+
                       <Input
                         placeholder="Resource Title"
                         value={resource.title}
                         onChange={(e) => updateResource(step.id, rIndex, "title", e.target.value)}
                         className="flex-1"
                       />
-                      
+
                       <Input
                         placeholder="https://..."
                         value={resource.url}

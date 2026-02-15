@@ -33,8 +33,8 @@ interface Step {
 export default function PathEditor() {
   const { id } = useParams<{ id: string }>(); // Check if we are in Edit Mode
   const navigate = useNavigate();
-  
-  const [isLoading, setIsLoading] = useState(!!id); 
+
+  const [isLoading, setIsLoading] = useState(!!id);
   const [isSaving, setIsSaving] = useState(false);
 
   // Form State
@@ -42,7 +42,7 @@ export default function PathEditor() {
   const [description, setDescription] = useState("");
   const [difficulty, setDifficulty] = useState("Beginner");
   const [isPublished, setIsPublished] = useState(false);
-  
+
   // Tags State
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -62,7 +62,7 @@ export default function PathEditor() {
     const fetchData = async () => {
       try {
         const data = await pathService.getPathById(id);
-        
+
         // Populate Form
         setTitle(data.title);
         setDescription(data.description);
@@ -72,20 +72,20 @@ export default function PathEditor() {
 
         // Populate Steps
         if (data.steps) {
-            const formattedSteps = data.steps.map((s: any) => ({
-                id: s.id, // Keep real ID
-                title: s.title,
-                description: s.description,
-                resources: s.resources.map((r: any) => ({
-                    id: r.id,
-                    title: r.title,
-                    url: r.url,
-                    type: r.resource_type || "article"
-                })),
-                isNew: false
-            }));
-            setSteps(formattedSteps);
-            originalStepIds.current = formattedSteps.map(s => s.id);
+          const formattedSteps = data.steps.map((s: any) => ({
+            id: s.id, // Keep real ID
+            title: s.title,
+            description: s.description,
+            resources: s.resources.map((r: any) => ({
+              id: r.id,
+              title: r.title,
+              url: r.url,
+              type: r.resource_type || "article"
+            })),
+            isNew: false
+          }));
+          setSteps(formattedSteps);
+          originalStepIds.current = formattedSteps.map(s => s.id);
         }
       } catch (error) {
         toast({ title: "Error", description: "Failed to load path.", variant: "destructive" });
@@ -101,28 +101,28 @@ export default function PathEditor() {
 
   // --- Step Management ---
   const addStep = () => {
-    setSteps([...steps, { 
-        id: Date.now().toString(), // Temp ID
-        title: "", 
-        description: "", 
-        resources: [],
-        isNew: true 
+    setSteps([...steps, {
+      id: Date.now().toString(), // Temp ID
+      title: "",
+      description: "",
+      resources: [],
+      isNew: true
     }]);
   };
 
   const removeStep = async (stepId: string) => {
     if (steps.length <= 1 && !id) return; // Don't delete last step in Create mode
-    
+
     // UI Update
     setSteps(steps.filter((s) => s.id !== stepId));
 
     // If Edit Mode & Existing Step -> Call API immediately (safer)
     if (id && !stepId.match(/^\d+$/) && !stepId.includes("now")) { // Crude check for "Is Real ID"
-       try {
-         await pathService.deleteStep(stepId);
-       } catch (e) {
-         console.error("Failed to delete step on backend");
-       }
+      try {
+        await pathService.deleteStep(stepId);
+      } catch (e) {
+        console.error("Failed to delete step on backend");
+      }
     }
   };
 
@@ -151,9 +151,9 @@ export default function PathEditor() {
     setSteps(steps.map((s) =>
       s.id === stepId
         ? {
-            ...s,
-            resources: s.resources.map((r, i) => i === resourceIndex ? { ...r, [field]: value } : r),
-          }
+          ...s,
+          resources: s.resources.map((r, i) => i === resourceIndex ? { ...r, [field]: value } : r),
+        }
         : s
     ));
   };
@@ -185,12 +185,12 @@ export default function PathEditor() {
     // Prevents "Field Required" errors from backend on updates
     const invalidStepIndex = steps.findIndex(step => !step.title.trim());
     if (invalidStepIndex !== -1) {
-       toast({ 
-         title: "Step Title Missing", 
-         description: `Step ${invalidStepIndex + 1} needs a title.`, 
-         variant: "destructive" 
-       });
-       return; // STOP here
+      toast({
+        title: "Step Title Missing",
+        description: `Step ${invalidStepIndex + 1} needs a title.`,
+        variant: "destructive"
+      });
+      return; // STOP here
     }
 
     setIsSaving(true);
@@ -227,48 +227,48 @@ export default function PathEditor() {
 
       } else {
         // === EDIT MODE (Sync/Diff) ===
-        
+
         // A. Update Basic Info
         await pathService.updatePath(id, basicPayload as any);
 
         // B. Sync Steps
         for (const step of steps) {
-            const stepPayload = {
-                title: step.title,
-                description: step.description,
-                position: steps.indexOf(step)
-            };
+          const stepPayload = {
+            title: step.title,
+            description: step.description,
+            position: steps.indexOf(step)
+          };
 
-            if (step.isNew) {
-                // Create New Step
-                const newStep = await pathService.createStep(id, stepPayload);
-                
-                // Create Resources for new step
-                for (const res of step.resources) {
-                    await pathService.createResource(newStep.id, {
-                        title: res.title,
-                        url: res.url,
-                        resource_type: res.type
-                    });
-                }
-            } else {
-                // Update Existing Step
-                await pathService.updateStep(step.id, stepPayload);
-                
-                // Resources Update:
-                // For simplicity in Edit Mode: We Create new ones. 
-                // (Robust resource diffing requires complex ID tracking)
-                const newResources = step.resources.filter(r => !r.id);
-                for (const res of newResources) {
-                      await pathService.createResource(step.id, {
-                         title: res.title,
-                         url: res.url,
-                         resource_type: res.type
-                     });
-                }
+          if (step.isNew) {
+            // Create New Step
+            const newStep = await pathService.createStep(id, stepPayload);
+
+            // Create Resources for new step
+            for (const res of step.resources) {
+              await pathService.createResource(newStep.id, {
+                title: res.title,
+                url: res.url,
+                resource_type: res.type
+              });
             }
+          } else {
+            // Update Existing Step
+            await pathService.updateStep(step.id, stepPayload);
+
+            // Resources Update:
+            // For simplicity in Edit Mode: We Create new ones. 
+            // (Robust resource diffing requires complex ID tracking)
+            const newResources = step.resources.filter(r => !r.id);
+            for (const res of newResources) {
+              await pathService.createResource(step.id, {
+                title: res.title,
+                url: res.url,
+                resource_type: res.type
+              });
+            }
+          }
         }
-        
+
         toast({ title: "Changes Saved", description: "Path updated successfully." });
         navigate(`/path/${id}`);
       }
@@ -282,13 +282,13 @@ export default function PathEditor() {
   };
 
   if (isLoading) {
-      return (
-          <MainLayout>
-              <div className="flex h-screen items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-          </MainLayout>
-      );
+    return (
+      <MainLayout>
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
   }
 
   return (
@@ -323,7 +323,7 @@ export default function PathEditor() {
           {/* Basic Info */}
           <section className="bg-card rounded-xl border p-6 space-y-5">
             <h2 className="text-lg font-display font-semibold">Basic Information</h2>
-            
+
             <div>
               <Label htmlFor="title">Path Title *</Label>
               <Input
@@ -373,7 +373,7 @@ export default function PathEditor() {
             {/* Tag Input */}
             <div>
               <Label>Tags (Press Enter to add)</Label>
-              <Input 
+              <Input
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
@@ -449,18 +449,18 @@ export default function PathEditor() {
                         <SelectContent>
                           <SelectItem value="video">Video</SelectItem>
                           <SelectItem value="article">Article</SelectItem>
-                          <SelectItem value="documentation">Docs</SelectItem>
-                          <SelectItem value="project">Project</SelectItem>
+                          <SelectItem value="doc">Docs</SelectItem>
+
                         </SelectContent>
                       </Select>
-                      
+
                       <Input
                         placeholder="Resource Title"
                         value={resource.title}
                         onChange={(e) => updateResource(step.id, rIndex, "title", e.target.value)}
                         className="flex-1"
                       />
-                      
+
                       <Input
                         placeholder="https://..."
                         value={resource.url}
