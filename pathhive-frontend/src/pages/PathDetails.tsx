@@ -647,7 +647,7 @@ export default function PathDetails() {
       />
       
       {!isAiOpen && (
-        <AIAssistantTrigger onClick={() => setIsAiOpen(true)} />
+        <AIAssistantTrigger onClick={() => setIsAiOpen(true)} isOpen={isAiOpen} />
       )}
     </MainLayout>
   );

@@ -133,7 +133,7 @@ export function NotificationsDropdown() {
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent className="w-80 bg-popover" align="end" forceMount>
+      <DropdownMenuContent className="w-[calc(100vw-2rem)] sm:w-80 bg-popover mx-4 sm:mx-0" align="end" forceMount>
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="font-semibold">Notifications</h3>
           {unreadCount > 0 && (

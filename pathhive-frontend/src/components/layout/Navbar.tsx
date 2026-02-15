@@ -91,16 +91,14 @@ export function Navbar() {
         </nav>
 
         {/* --- Right Side (Auth & Actions) --- */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           
-          {/* Notifications */}
+          {/* Notifications - Now visible on all screens */}
           {isAuthenticated && (
-            <div className="hidden md:block">
-               <NotificationsDropdown />
-            </div>
+            <NotificationsDropdown />
           )}
 
-          {/* User Menu */}
+          {/* User Menu - Hidden on mobile */}
           <div className="hidden md:flex items-center gap-2">
             {isAuthenticated ? (
               <UserMenu user={user} isAdmin={isAdmin} onLogout={handleLogout} navigate={navigate} />
@@ -150,12 +148,12 @@ export function Navbar() {
             {/* Mobile Create Action */}
             {isAuthenticated && (
                <Link 
-                  to="/create-path"
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg hover:bg-accent text-muted-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
+                 to="/create-path"
+                 className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg hover:bg-accent text-muted-foreground"
+                 onClick={() => setMobileMenuOpen(false)}
                >
-                  <PlusCircle className="h-4 w-4" />
-                  Create Path
+                 <PlusCircle className="h-4 w-4" />
+                 Create Path
                </Link>
             )}
 

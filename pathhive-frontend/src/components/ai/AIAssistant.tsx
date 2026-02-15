@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext"; // 👈 Import Auth Context
+import { useAuth } from "@/contexts/AuthContext";
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -37,9 +37,8 @@ interface AIAssistantProps {
 }
 
 export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
-  const { isAuthenticated } = useAuth(); // 👈 Get auth state
+  const { isAuthenticated } = useAuth();
   
-  // Default Welcome Message
   const welcomeMessage: Message = {
     id: "welcome",
     role: "assistant",
@@ -53,10 +52,8 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 👇 NEW: Fetch History on Load
   useEffect(() => {
     const fetchHistory = async () => {
-      // Only fetch if open, logged in, and we have a pathId
       if (isOpen && isAuthenticated && pathId) {
         try {
           const res = await api.get('/paths/ai-chat/history/', {
@@ -64,14 +61,12 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
           });
           
           if (res.data && res.data.length > 0) {
-            // Transform Backend Data -> Frontend Data
             const history = res.data.map((msg: any) => ({
               id: msg.id.toString(),
-              role: msg.sender, // 'user' or 'assistant'
+              role: msg.sender,
               content: msg.message,
               timestamp: new Date(msg.timestamp)
             }));
-            // Replace default message with actual history
             setMessages(history);
           }
         } catch (err) {
@@ -83,12 +78,11 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
     fetchHistory();
   }, [isOpen, pathId, isAuthenticated]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping, isOpen]); // Added isOpen to scroll when opening
+  }, [messages, isTyping, isOpen]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -137,8 +131,10 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
   return (
     <div 
       className={cn(
-        "fixed bottom-4 right-4 z-50 bg-card border rounded-2xl shadow-xl overflow-hidden transition-all duration-300 flex flex-col",
-        isMinimized ? "w-64 h-14" : "w-[400px] md:w-[500px] h-[600px] max-h-[80vh]"
+        "fixed z-50 bg-card border shadow-xl overflow-hidden transition-all duration-300 flex flex-col",
+        isMinimized 
+          ? "bottom-4 right-4 w-64 h-14 rounded-2xl hidden sm:flex" // Hides minimized state on mobile
+          : "bottom-0 right-0 w-full h-[85dvh] rounded-t-2xl rounded-b-none sm:bottom-4 sm:right-4 sm:w-[400px] md:sm:w-[500px] sm:h-[600px] sm:max-h-[80vh] sm:rounded-2xl"
       )}
     >
       {/* Header */}
@@ -153,7 +149,8 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
           </div>
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => setIsMinimized(!isMinimized)}>
+          {/* Minimize button hidden on mobile */}
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20 hidden sm:flex" onClick={() => setIsMinimized(!isMinimized)}>
             {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={onClose}>
@@ -244,7 +241,7 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
           </ScrollArea>
 
           {/* Input */}
-          <div className="p-3 border-t bg-white shrink-0">
+          <div className="p-3 border-t bg-white shrink-0 pb-6 sm:pb-3">
             <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
               <Input
                 placeholder={pathId ? "Ask about this path..." : "Ask me anything..."}
@@ -261,14 +258,18 @@ export function AIAssistant({ isOpen, onClose, pathId }: AIAssistantProps) {
         </>
       )}
     </div>
-  
-);
+  );
 }
-export function AIAssistantTrigger({ onClick }: { onClick: () => void }) {
+
+// Ensure the trigger accepts `isOpen` so it hides on mobile when chat is active
+export function AIAssistantTrigger({ onClick, isOpen }: { onClick: () => void, isOpen: boolean }) {
   return (
     <Button
       onClick={onClick}
-      className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-xl z-40 bg-primary hover:bg-primary/90 transition-transform hover:scale-105"
+      className={cn(
+        "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-xl z-40 bg-primary hover:bg-primary/90 transition-all duration-200 hover:scale-105",
+        isOpen ? "scale-0 sm:scale-100" : "scale-100"
+      )}
     >
       <MessageSquare className="h-6 w-6" />
     </Button>
