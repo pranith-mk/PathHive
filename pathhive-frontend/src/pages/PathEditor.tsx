@@ -182,7 +182,6 @@ export default function PathEditor() {
     }
 
     // 2. ✨ VALIDATION: Check for Empty Step Titles ✨
-    // Prevents "Field Required" errors from backend on updates
     const invalidStepIndex = steps.findIndex(step => !step.title.trim());
     if (invalidStepIndex !== -1) {
       toast({
@@ -190,7 +189,7 @@ export default function PathEditor() {
         description: `Step ${invalidStepIndex + 1} needs a title.`,
         variant: "destructive"
       });
-      return; // STOP here
+      return; 
     }
 
     setIsSaving(true);
@@ -255,9 +254,7 @@ export default function PathEditor() {
             // Update Existing Step
             await pathService.updateStep(step.id, stepPayload);
 
-            // Resources Update:
-            // For simplicity in Edit Mode: We Create new ones. 
-            // (Robust resource diffing requires complex ID tracking)
+            // Resources Update
             const newResources = step.resources.filter(r => !r.id);
             for (const res of newResources) {
               await pathService.createResource(step.id, {
@@ -294,24 +291,24 @@ export default function PathEditor() {
   return (
     <MainLayout showFooter={false}>
       <div className="container py-8 max-w-4xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        {/* Header - Now stacks on mobile */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-display font-bold">
+              <h1 className="text-xl sm:text-2xl font-display font-bold">
                 {id ? "Edit Learning Path" : "Create Learning Path"}
               </h1>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => handleSave(false)} disabled={isSaving}>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => handleSave(false)} disabled={isSaving}>
               <Save className="h-4 w-4 mr-2" />
               {isSaving ? "Saving..." : "Save Draft"}
             </Button>
-            <Button variant="hero" onClick={() => handleSave(true)} disabled={isSaving}>
+            <Button variant="hero" className="flex-1 sm:flex-none" onClick={() => handleSave(true)} disabled={isSaving}>
               {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Eye className="h-4 w-4 mr-2" />}
               {isPublished || id ? "Update & Publish" : "Publish"}
             </Button>
@@ -321,7 +318,7 @@ export default function PathEditor() {
         {/* Form */}
         <div className="space-y-8">
           {/* Basic Info */}
-          <section className="bg-card rounded-xl border p-6 space-y-5">
+          <section className="bg-card rounded-xl border p-4 sm:p-6 space-y-5">
             <h2 className="text-lg font-display font-semibold">Basic Information</h2>
 
             <div>
@@ -350,7 +347,7 @@ export default function PathEditor() {
               <div>
                 <Label>Difficulty Level</Label>
                 <Select value={difficulty} onValueChange={setDifficulty}>
-                  <SelectTrigger className="mt-1.5">
+                  <SelectTrigger className="mt-1.5 w-full">
                     <SelectValue placeholder="Select difficulty" />
                   </SelectTrigger>
                   <SelectContent>
@@ -361,7 +358,7 @@ export default function PathEditor() {
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between bg-secondary/50 rounded-lg px-4 py-3">
+              <div className="flex items-center justify-between bg-secondary/50 rounded-lg px-4 py-3 mt-1.5 md:mt-0">
                 <div>
                   <Label>Published</Label>
                   <p className="text-sm text-muted-foreground">Visible to all users</p>
@@ -395,17 +392,14 @@ export default function PathEditor() {
 
           {/* Steps */}
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-display font-semibold">Learning Steps</h2>
-              <Button variant="outline" size="sm" onClick={addStep}>
-                <Plus className="h-4 w-4 mr-1" /> Add Step
-              </Button>
             </div>
 
             {steps.map((step, index) => (
-              <div key={step.id} className="bg-card rounded-xl border p-5 space-y-4">
+              <div key={step.id} className="bg-card rounded-xl border p-4 sm:p-5 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                  <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-semibold text-sm shrink-0">
                     {index + 1}
                   </div>
                   <Input
@@ -415,7 +409,7 @@ export default function PathEditor() {
                     className="flex-1"
                   />
                   {(steps.length > 1 || id) && (
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => removeStep(step.id)}>
+                    <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10" onClick={() => removeStep(step.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
@@ -428,54 +422,76 @@ export default function PathEditor() {
                   className="min-h-[80px]"
                 />
 
-                {/* Resources */}
-                <div className="space-y-3 pl-11">
+                {/* Resources - Fully Responsive Row */}
+                <div className="space-y-3 pl-0 sm:pl-11 pt-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm">Resources (URL only)</Label>
+                    <Label className="text-sm">Resources</Label>
                     <Button variant="ghost" size="sm" onClick={() => addResource(step.id)}>
                       <Link className="h-3.5 w-3.5 mr-1" /> Add Link
                     </Button>
                   </div>
 
                   {step.resources.map((resource, rIndex) => (
-                    <div key={rIndex} className="flex gap-2 items-start">
-                      <Select
-                        value={resource.type}
-                        onValueChange={(v) => updateResource(step.id, rIndex, "type", v)}
-                      >
-                        <SelectTrigger className="w-[120px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="video">Video</SelectItem>
-                          <SelectItem value="article">Article</SelectItem>
-                          <SelectItem value="doc">Docs</SelectItem>
+                    <div key={rIndex} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center w-full bg-secondary/30 sm:bg-transparent p-3 sm:p-0 rounded-md border sm:border-none">
+                      
+                      {/* Mobile Header for Resource */}
+                      <div className="flex justify-between items-center w-full sm:hidden mb-1">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Resource {rIndex + 1}</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeResource(step.id, rIndex)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
 
-                        </SelectContent>
-                      </Select>
+                      <div className="w-full sm:w-[130px] shrink-0">
+                        <Select
+                          value={resource.type}
+                          onValueChange={(v) => updateResource(step.id, rIndex, "type", v)}
+                        >
+                          <SelectTrigger className="w-full bg-background sm:bg-transparent">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="video">Video</SelectItem>
+                            <SelectItem value="article">Article</SelectItem>
+                            <SelectItem value="doc">Docs</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
                       <Input
-                        placeholder="Resource Title"
+                        placeholder="Resource Title (e.g. React Docs)"
                         value={resource.title}
                         onChange={(e) => updateResource(step.id, rIndex, "title", e.target.value)}
-                        className="flex-1"
+                        className="w-full sm:flex-1 bg-background sm:bg-transparent"
                       />
 
-                      <Input
-                        placeholder="https://..."
-                        value={resource.url}
-                        onChange={(e) => updateResource(step.id, rIndex, "url", e.target.value)}
-                        className="flex-1"
-                      />
-
-                      <Button variant="ghost" size="icon" onClick={() => removeResource(step.id, rIndex)}>
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2 w-full sm:flex-1 items-center">
+                        <Input
+                          placeholder="https://..."
+                          value={resource.url}
+                          onChange={(e) => updateResource(step.id, rIndex, "url", e.target.value)}
+                          className="flex-1 bg-background sm:bg-transparent"
+                        />
+                        {/* Desktop Delete Button */}
+                        <Button variant="ghost" size="icon" className="hidden sm:flex shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => removeResource(step.id, rIndex)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             ))}
+
+            {/* Full-width dashed button at the bottom */}
+            <Button
+              variant="outline"
+              className="w-full border-dashed border-2 py-8 text-muted-foreground hover:text-primary hover:border-primary hover:bg-primary/5 transition-all mt-6"
+              onClick={addStep}
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Add Another Step
+            </Button>
           </section>
         </div>
       </div>

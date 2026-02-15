@@ -4,9 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route } from "react-router-dom"; 
 import { AuthProvider } from "@/contexts/AuthContext";
-// 👇 DELETE THESE IMPORTS (We use them in PathDetails.tsx instead)
-// import { AIAssistant, AIAssistantTrigger } from "@/components/ai/AIAssistant";
-// import { useState } from "react"; 
 
 import PathEditor from "@/pages/PathEditor";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
@@ -27,8 +24,6 @@ import ScrollToTop from "@/components/shared/ScrollToTop";
 
 const queryClient = new QueryClient();
 
-
-
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -45,24 +40,23 @@ const App = () => {
               
               <Route path="/browse" element={<Browse />} />
               
-              {/* This route uses :id, which is correct! */}
               <Route path="/path/:id" element={<PathDetails />} />
               
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/create" element={<CreatePath />} />
               
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/creator/:creatorId" element={<CreatorDashboard />} />
               <Route path="*" element={<NotFound />} />
 
-              <Route path="/create-path" element={<ProtectedRoute><PathEditor /></ProtectedRoute>} />
+              {/* 👇 FIXED: This now uses CreatePath for making NEW paths */}
+              <Route path="/create-path" element={<ProtectedRoute><CreatePath /></ProtectedRoute>} />
+              
+              {/* 👇 FIXED: This keeps PathEditor strictly for EDITING paths */}
               <Route path="/path/:id/edit" element={<ProtectedRoute><PathEditor /></ProtectedRoute>} />
 
               <Route path="/settings" element={<Settings />} />
               
             </Routes>
-
-     
           
         </TooltipProvider>
       </AuthProvider>
