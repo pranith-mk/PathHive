@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; // 1. Import useEffect
+import { useState, useEffect } from "react"; 
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -18,14 +18,12 @@ export default function Login() {
   const navigate = useNavigate();
 
   // 3. EFFECT: Handle Redirection based on Role
-  // This runs automatically whenever 'user' or 'isAuthenticated' changes
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Check if user is admin (using the field we fixed earlier)
       if (user.is_staff || user.role === 'admin') {
         navigate("/admin");
       } else {
-        navigate("/dashboard"); // or "/" for home
+        navigate("/dashboard"); 
       }
     }
   }, [isAuthenticated, user, navigate]);
@@ -41,8 +39,6 @@ export default function Login() {
         title: "Welcome back!",
         description: "You've successfully logged in.",
       });
-      // 4. REMOVED manual navigate() here. 
-      // We let the useEffect above handle it to ensure we have the user data first.
     } else {
       toast({
         title: "Login Failed",
@@ -111,17 +107,7 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="rounded border-input" />
-                <span className="text-muted-foreground">Remember me</span>
-              </label>
-              <a href="#" className="text-primary hover:underline">
-                Forgot password?
-              </a>
-            </div>
-
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full mt-2" size="lg" disabled={isLoading}>
               {isLoading ? "Logging in..." : "Log in"}
             </Button>
           </form>
